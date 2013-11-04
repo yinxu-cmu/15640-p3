@@ -9,13 +9,21 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.Random;
+
+import message.CopyFromLocalCommandMsg;
+import message.Message;
 
 public class MasterServer extends Thread {
 	private ServerSocket socketListener = null;
@@ -26,7 +34,6 @@ public class MasterServer extends Thread {
 		} catch (IOException e) {
 			System.err.println("Fail to open socket during master server init.");
 		}
-
 	}
 
 	/*
@@ -37,42 +44,78 @@ public class MasterServer extends Thread {
 
 		System.out.println("Master server started");
 
-		/* test each individual function here */
-//		catCommand("file1");
-//		copyFromLocalCommand("/tmp/copy1");
-//		copyToLocalCommand("copy1", "/tmp/");
-//		lsCommand();
-//		mkdirCommand();
-//		rmCommand("file1");
+		while (true) {
+			try {
+				Socket socketServing = socketListener.accept();
+				System.out.println("Socket accepted from " + socketServing.getInetAddress() + " "
+						+ socketServing.getPort());
 
-		// while (true) {
-		// try {
-		// Socket socketServing = socketListener.accept();
-		// BufferedReader in = new BufferedReader(new InputStreamReader(
-		// socketServing.getInputStream()));
-		// PrintWriter out = new PrintWriter(new OutputStreamWriter(
-		// socketServing.getOutputStream()));
-		//
-		// /* save all the information into the list for future use */
-		// SlaveInfo slaveInfo = new SlaveInfo();
-		// slaveInfo.iaddr = socketServing.getInetAddress();
-		// slaveInfo.port = socketServing.getPort();
-		// synchronized (slaveList) {
-		// slaveList.add(slaveInfo);
-		// }
-		//
-		// System.out.println("Socket accepted from " +
-		// socketServing.getInetAddress() + " "
-		// + socketServing.getPort());
-		// } catch (IOException e) {
-		// System.err.println("Fail to accept slave server request.");
-		// }
-		// }
+				Message msg = null;
+				ObjectInputStream input = new ObjectInputStream(socketServing.getInputStream());
+//				ObjectOutputStream output = new ObjectOutputStream(socketServing.getOutputStream());
+				msg = (Message) input.readObject();
+
+				if (msg.isFromSlave()) {
+					/* save all the information into the list for future use */
+					SlaveInfo slaveInfo = new SlaveInfo();
+					slaveInfo.socket = socketServing;
+					slaveList.add(slaveInfo);
+					System.out.println("One slave added");
+
+				}
+				this.parseMessage(msg);
+
+				System.out.println("debugging");
+
+			} catch (IOException e) {
+				e.printStackTrace();
+				System.err.println("Fail to accept slave server request.");
+			} catch (ClassNotFoundException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+
+		/* test each individual function here */
+		// catCommand("file1");
+		// copyFromLocalCommand("/tmp/copy1");
+		// copyToLocalCommand("copy1", "/tmp/");
+		// lsCommand();
+		// mkdirCommand();
+		// rmCommand("file1");
+	}
+
+	private void parseMessage(Message msg) throws IOException, ClassNotFoundException {
+		if (msg instanceof CopyFromLocalCommandMsg) {
+			executeCopyFromLocal((CopyFromLocalCommandMsg) msg);
+		}
+	}
+
+	private void executeCopyFromLocal(CopyFromLocalCommandMsg msg) throws IOException,
+			ClassNotFoundException {
+
+		ArrayList<SlaveInfo> randomSlaveList = this.getRandomSlaves();
+		for (SlaveInfo slaveInfo : randomSlaveList) {
+			CommunicationModule.sendMessage(slaveInfo.socket, msg);
+		}
+		System.out.println("here??");
+
+	}
+
+	private ArrayList<SlaveInfo> getRandomSlaves() {
+		ArrayList<SlaveInfo> ret = new ArrayList<SlaveInfo>(this.slaveList);
+		if (YZFS.replicationFactor < this.slaveList.size()) {
+			Collections.shuffle(ret);
+			return (ArrayList<SlaveInfo>) ret.subList(0, (YZFS.replicationFactor - 1));
+		} else {
+			return ret;
+		}
 	}
 
 	/**
 	 * 
-	 * @param localsrc (full path and file name) of the local file
+	 * @param localsrc
+	 *            (full path and file name) of the local file
 	 * @return
 	 */
 	private boolean copyFromLocalCommand(String localsrc) {
@@ -82,8 +125,10 @@ public class MasterServer extends Thread {
 
 	/**
 	 * 
-	 * @param remoteSrcFileName only the file name of the remote file
-	 * @param localDesDirectory only the directory to which you want copy the file 
+	 * @param remoteSrcFileName
+	 *            only the file name of the remote file
+	 * @param localDesDirectory
+	 *            only the directory to which you want copy the file
 	 * @return
 	 */
 	private boolean copyToLocalCommand(String remoteSrcFileName, String localDesDirectory) {
@@ -205,6 +250,7 @@ public class MasterServer extends Thread {
 	}
 
 	private HashSet<SlaveInfo> slaveList = new HashSet<SlaveInfo>();
+	private static Random random = new Random();
 	private final String directoryPath = "/tmp/YZFS/";
 	private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 }

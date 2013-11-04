@@ -9,7 +9,8 @@ import exception.YZFSSlaveServiceException;
 public class YZFS {
 
 	/* to run, go to bin/ directory, type java dfs.YZFS */
-	public static void main(String[] args) throws YZFSMasterServiceException, UnknownHostException, IOException, ClassNotFoundException {
+	public static void main(String[] args) throws YZFSMasterServiceException, UnknownHostException,
+			IOException, ClassNotFoundException, InterruptedException {
 		/* start master server */
 		if (args.length == 0) {
 			MasterServer ms = new MasterServer();
@@ -18,7 +19,7 @@ public class YZFS {
 			System.exit(0);
 		}
 
-		/* start slave server */
+		/* start background-running slave server */
 		else if (args.length == 2 && args[0].equals("-c")) {
 			SlaveServer ss = new SlaveServer();
 			try {
@@ -28,6 +29,11 @@ public class YZFS {
 			}
 			System.out.println("Slave Serivce Ended");
 		}
+		
+		else if (args.length > 0 && args[0].equals("-yzfs")) {
+			CommandLine commandLine = new CommandLine();
+			commandLine.parseCommandLine(args);
+		}
 
 		else {
 			System.out.println("Usage: java ProcessManager [-c <master hostname or ip>]");
@@ -36,5 +42,11 @@ public class YZFS {
 
 	public static final int MASTER_PORT = 62742;
 	public static final int SLAVE_PORT = 62743;
+	public static final int CLIENT_PORT = 62744;
+	
+	public static final int replicationFactor = 2;
+	
+	public static final String fileSystemWorkingDir= "/tmp/YZFS/";
+	public static final String localWorkingDir = "/tmp/LOCAL/";
 
 }
