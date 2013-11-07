@@ -85,7 +85,7 @@ public class MasterServer extends Thread {
 		if (msg instanceof CopyFromLocalCommandMsg) {
 			System.out.println("master server receive a copy form local message");
 			executeCopyFromLocal((CopyFromLocalCommandMsg) msg);
-			return null;
+			return new AckMsg(true);
 		} else if (msg instanceof ListMsg) {
 			System.out.println("master server receive a list message");
 			executeList((ListMsg) msg);
@@ -129,10 +129,12 @@ public class MasterServer extends Thread {
 
 	private void executeCopyFromLocal(CopyFromLocalCommandMsg msg) throws IOException,
 			ClassNotFoundException {
-
 		ArrayList<SlaveInfo> randomSlaveList = this.getRandomSlaves();
+		Message ack = new Message();
 		for (SlaveInfo slaveInfo : randomSlaveList) {
-			CommunicationModule.sendMessage(slaveInfo.input, slaveInfo.output, msg);
+			ack = CommunicationModule.sendMessage(slaveInfo.input, slaveInfo.output, msg);
+			if (ack instanceof AckMsg)
+				System.out.println("ack from slave server");
 			slaveInfo.fileList.add(msg.getFileName());
 		}
 		this.masterFileList.put(msg.getFileName(), randomSlaveList);

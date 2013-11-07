@@ -84,8 +84,8 @@ public class CommunicationModule {
 		objOutput.writeObject(msg);
 		objOutput.flush();
 
-		 ObjectInputStream objInput = new ObjectInputStream(input);
-		 reply = (Message) objInput.readObject();
-		 return reply;
+		ObjectInputStream objInput = new ObjectInputStream(input);
+		reply = (Message) objInput.readObject();
+		return reply;
 	}
 }

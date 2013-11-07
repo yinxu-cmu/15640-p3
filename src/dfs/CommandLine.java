@@ -68,7 +68,8 @@ public class CommandLine {
 
 		CopyFromLocalCommandMsg request = new CopyFromLocalCommandMsg(localFileFullPath,
 				InetAddress.getLocalHost(), YZFS.CLIENT_PORT);
-
+		request.setDes(masterIP, masterPort);
+		
 		/*
 		 * the client need to open the listening socket first before send
 		 * message to master to avoid race condition in file transfer
@@ -76,8 +77,9 @@ public class CommandLine {
 		FileTransferThread fileTransfer = new FileTransferThread(localFileFullPath);
 		fileTransfer.start();
 
-		CommunicationModule.sendMessage(masterIP, masterPort, request);
-		Thread.sleep(3*1000);
+		Message ack = CommunicationModule.sendMessage(request);
+		if (ack instanceof AckMsg)
+			System.out.println("get ack from master");
 		System.exit(0);
 	}
 
@@ -92,7 +94,6 @@ public class CommandLine {
 				ServerSocket serverSocket = new ServerSocket(YZFS.CLIENT_PORT);
 				Socket socket = null;
 				// replication factor hard coded here
-				int i = 0;
 				while (true) {
 					socket = serverSocket.accept();
 
@@ -115,13 +116,7 @@ public class CommandLine {
 				System.err.println("ee");
 			}
 		}
-		
-		public void stopFileTrans() {
-			System.out.println("trying to stop the thread");
-			currentThread.interrupt();
-		}
 
-		private Thread currentThread = Thread.currentThread();
 		private String localFileFullPath;
 	}
 
