@@ -9,30 +9,63 @@ import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.UnknownHostException;
 import java.util.Properties;
 
-import message.AckMsg;
-import message.CopyFromLocalCommandMsg;
-import message.Message;
+import message.*;
 
 public class CommandLine {
+
+	public CommandLine() throws FileNotFoundException, IOException {
+		// load a properties file and read master ip and port
+		Properties prop = new Properties();
+		prop.load(new FileInputStream(YZFS.fileSystemWorkingDir + ".masterinfo.config"));
+		this.masterIP = InetAddress.getByName(prop.getProperty("master host name"));
+		this.masterPort = Integer.parseInt(prop.getProperty("master port number"));
+	}
 
 	public void parseCommandLine(String[] args) throws FileNotFoundException, IOException,
 			ClassNotFoundException {
 		/* args[0] always equals to "-yzfs" */
 		if (args[1].equals("copyFromLocal"))
 			copyFromLocal(args[2]);
+		else if (args[1].equals("ls"))
+			list();
+		else if (args[1].equals("rm"))
+			remove(args[2]);
+		else if (args[1].equals("cat"))
+			catenate(args[2]);
+	}
+
+	private void catenate(String localFileFullPath) throws UnknownHostException, IOException,
+			ClassNotFoundException {
+		System.out.println("catenate command line parsed");
+		CatenateMsg request = new CatenateMsg(localFileFullPath);
+		request.setDes(masterIP, masterPort);
+		Message reply = CommunicationModule.sendMessage(request);
+		System.out.println(((CatenateMsg) reply).getCatReply());
+	}
+
+	private void remove(String localFileFullPath) throws UnknownHostException, IOException,
+			ClassNotFoundException {
+		System.out.println("remove command line parsed");
+		RemoveMsg request = new RemoveMsg(localFileFullPath);
+		request.setDes(masterIP, masterPort);
+		CommunicationModule.sendMessage(request);
+	}
+
+	private void list() throws IOException, ClassNotFoundException {
+		System.out.println("list command line parsed modified");
+		ListMsg request = new ListMsg();
+		request.setDes(masterIP, masterPort);
+		Message reply = CommunicationModule.sendMessage(request);
+		System.out.println(((ListMsg) reply).getListReply());
 	}
 
 	private void copyFromLocal(String localFileFullPath) throws FileNotFoundException, IOException,
 			ClassNotFoundException {
 		System.out.println("copy from local command line parsed");
-		Properties prop = new Properties();
 
-		// load a properties file
-		prop.load(new FileInputStream(YZFS.fileSystemWorkingDir + ".masterinfo.config"));
-		InetAddress masterIP = InetAddress.getByName(prop.getProperty("master host name"));
-		int masterPort = Integer.parseInt(prop.getProperty("master port number"));
 		CopyFromLocalCommandMsg request = new CopyFromLocalCommandMsg(localFileFullPath,
 				InetAddress.getLocalHost(), YZFS.CLIENT_PORT);
 
@@ -83,5 +116,8 @@ public class CommandLine {
 
 		private String localFileFullPath;
 	}
+
+	private InetAddress masterIP;
+	private int masterPort;
 
 }

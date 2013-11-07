@@ -11,6 +11,16 @@ public class Message implements Serializable {
 	protected int desPort;
 	protected int srcPort;
 	private boolean isFromSlave = false;
+	
+	public void setDes(InetAddress desIP, int desPort) {
+		this.desIP = desIP;
+		this.desPort = desPort;
+	}
+	
+	public void setSrc(InetAddress srcIP, int srcPort) {
+		this.srcIP = srcIP;
+		this.srcPort = srcPort;
+	}
 
 	public InetAddress getDesIP() {
 		return desIP;

@@ -4,11 +4,13 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.InetAddress;
@@ -16,9 +18,7 @@ import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.Properties;
 
-import message.AckMsg;
-import message.CopyFromLocalCommandMsg;
-import message.Message;
+import message.*;
 
 import exception.YZFSSlaveServiceException;
 
@@ -45,9 +45,10 @@ public class SlaveServer {
 		this.writeMasterInfo(masterHostName, YZFS.MASTER_PORT);
 		Message msg = new Message();
 		msg.setFromSlave(true);
-		ObjectOutputStream output = new ObjectOutputStream(socket.getOutputStream());
-		output.writeObject(msg);
-		output.flush();
+		OutputStream output = socket.getOutputStream();
+		ObjectOutputStream objOutput = new ObjectOutputStream(output);
+		objOutput.writeObject(msg);
+		objOutput.flush();
 
 		InputStream input = socket.getInputStream();
 		ObjectInputStream objInput = null;
@@ -57,13 +58,49 @@ public class SlaveServer {
 			if (msg instanceof CopyFromLocalCommandMsg) {
 				System.out.println("slave server receive a copy from local message");
 				executeCopyFromLocal((CopyFromLocalCommandMsg) msg);
-//				AckMsg ack = new AckMsg(true);
-//				output.reset();
-//				output.writeObject(ack);
-//				output.flush();
+				AckMsg ack = new AckMsg(true);
+				objOutput = new ObjectOutputStream(output);
+				objOutput.writeObject(ack);
+				objOutput.flush();
+			} else if (msg instanceof RemoveMsg) {
+				System.out.println("slave server receive a remove message");
+				executeRemove((RemoveMsg) msg);
+			} else if (msg instanceof CatenateMsg) {
+				System.out.println("slave server receive a catenate message");
+				executeCatenate((CatenateMsg) msg);
+				objOutput = new ObjectOutputStream(output);
+				objOutput.writeObject(msg);
+				objOutput.flush();
 			}
 		}
 
+	}
+	
+	private void executeCatenate (CatenateMsg msg) {
+		BufferedReader buffer = null;
+		StringBuilder ret = new StringBuilder();
+		try {
+			buffer = new BufferedReader(new FileReader(YZFS.fileSystemWorkingDir + msg.getFileName()));
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			ret.append("No such file\n");
+		}
+
+		String currentLine = null;
+		try {
+			while ((currentLine = buffer.readLine()) != null) {
+				ret.append(currentLine + '\n');
+			}
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		msg.setCatReply(ret.toString());
+	}
+	
+	private void executeRemove(RemoveMsg msg) {
+		File file = new File(YZFS.fileSystemWorkingDir + msg.getFileName());
+		file.delete();
 	}
 
 	public void writeMasterInfo(String masterHostName, int masterPort)
@@ -98,7 +135,7 @@ public class SlaveServer {
 	}
 
 	private boolean executeCopyFromLocal(CopyFromLocalCommandMsg msg) throws IOException {
-		System.out.println("Start File Transfer from " + msg.getFileTransferIP()
+		System.out.println("Start File Transfer from " + msg.getFileTransferIP() + " "
 				+ msg.getFileTransferPort());
 		Socket socket = new Socket(msg.getFileTransferIP(), msg.getFileTransferPort());
 		InputStream input = socket.getInputStream();

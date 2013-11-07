@@ -16,14 +16,15 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.UnknownHostException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Random;
 
-import message.CopyFromLocalCommandMsg;
-import message.Message;
+import message.*;
 
 public class MasterServer extends Thread {
 	private ServerSocket socketListener = null;
@@ -52,7 +53,6 @@ public class MasterServer extends Thread {
 
 				Message msg = null;
 				ObjectInputStream input = new ObjectInputStream(socketServing.getInputStream());
-//				ObjectOutputStream output = new ObjectOutputStream(socketServing.getOutputStream());
 				msg = (Message) input.readObject();
 
 				if (msg.isFromSlave()) {
@@ -64,7 +64,11 @@ public class MasterServer extends Thread {
 					System.out.println("One slave added");
 
 				}
-				this.parseMessage(msg);
+
+				Message reply = this.parseMessage(msg);
+				ObjectOutputStream output = new ObjectOutputStream(socketServing.getOutputStream());
+				output.writeObject(reply);
+				System.out.println("reply msg sent from master");
 
 			} catch (IOException e) {
 				e.printStackTrace();
@@ -75,20 +79,52 @@ public class MasterServer extends Thread {
 			}
 		}
 
-		/* test each individual function here */
-		// catCommand("file1");
-		// copyFromLocalCommand("/tmp/copy1");
-		// copyToLocalCommand("copy1", "/tmp/");
-		// lsCommand();
-		// mkdirCommand();
-		// rmCommand("file1");
 	}
 
-	private void parseMessage(Message msg) throws IOException, ClassNotFoundException {
+	private Message parseMessage(Message msg) throws IOException, ClassNotFoundException {
 		if (msg instanceof CopyFromLocalCommandMsg) {
 			System.out.println("master server receive a copy form local message");
 			executeCopyFromLocal((CopyFromLocalCommandMsg) msg);
+			return null;
+		} else if (msg instanceof ListMsg) {
+			System.out.println("master server receive a list message");
+			executeList((ListMsg) msg);
+			return msg;
+		} else if (msg instanceof RemoveMsg) {
+			System.out.println("master server receive a remove message");
+			executeRemove((RemoveMsg) msg);
+		} else if (msg instanceof CatenateMsg) {
+			System.out.println("master server receive a cat message");
+			executeCatenate((CatenateMsg) msg);
+			return msg;
 		}
+		return null;
+	}
+
+	private void executeCatenate(CatenateMsg msg) throws UnknownHostException, IOException,
+			ClassNotFoundException {
+		String fileName = msg.getFileName();
+		SlaveInfo slaveInfo = this.masterFileList.get(fileName).get(0);
+		Message reply = CommunicationModule.sendMessage(slaveInfo.input, slaveInfo.output, msg);
+		msg.setCatReply(((CatenateMsg) reply).getCatReply());
+	}
+
+	private void executeRemove(RemoveMsg msg) throws UnknownHostException, IOException,
+			ClassNotFoundException {
+		String fileName = msg.getFileName();
+		ArrayList<SlaveInfo> slaveList = this.masterFileList.get(fileName);
+		for (SlaveInfo slaveInfo : slaveList) {
+			CommunicationModule.sendMessage(slaveInfo.input, slaveInfo.output, msg);
+		}
+		this.masterFileList.remove(fileName);
+	}
+
+	private void executeList(ListMsg msg) {
+		StringBuilder strReply = new StringBuilder();
+		for (String str : this.masterFileList.keySet())
+			strReply.append(str + '\t');
+		strReply.insert(0, "Found " + this.masterFileList.size() + " items\n");
+		msg.setListReply(strReply.toString());
 	}
 
 	private void executeCopyFromLocal(CopyFromLocalCommandMsg msg) throws IOException,
@@ -97,7 +133,9 @@ public class MasterServer extends Thread {
 		ArrayList<SlaveInfo> randomSlaveList = this.getRandomSlaves();
 		for (SlaveInfo slaveInfo : randomSlaveList) {
 			CommunicationModule.sendMessage(slaveInfo.input, slaveInfo.output, msg);
+			slaveInfo.fileList.add(msg.getFileName());
 		}
+		this.masterFileList.put(msg.getFileName(), randomSlaveList);
 		System.out.println("send message to " + randomSlaveList.size() + " hosts");
 
 	}
@@ -109,63 +147,6 @@ public class MasterServer extends Thread {
 			return new ArrayList<SlaveInfo>(ret.subList(0, (YZFS.replicationFactor)));
 		} else {
 			return ret;
-		}
-	}
-
-	/**
-	 * 
-	 * @param localsrc
-	 *            (full path and file name) of the local file
-	 * @return
-	 */
-	private boolean copyFromLocalCommand(String localsrc) {
-		File srcFile = new File(localsrc);
-		return copyFile(localsrc, this.directoryPath + srcFile.getName());
-	}
-
-	/**
-	 * 
-	 * @param remoteSrcFileName
-	 *            only the file name of the remote file
-	 * @param localDesDirectory
-	 *            only the directory to which you want copy the file
-	 * @return
-	 */
-	private boolean copyToLocalCommand(String remoteSrcFileName, String localDesDirectory) {
-		return copyFile(this.directoryPath + remoteSrcFileName, localDesDirectory
-				+ remoteSrcFileName);
-	}
-
-	private boolean copyFile(String src, String des) {
-		InputStream inStream = null;
-		OutputStream outStream = null;
-
-		try {
-			File srcFile = new File(src);
-			File desFile = new File(des);
-
-			if (!srcFile.exists())
-				return false;
-			if (!desFile.exists())
-				desFile.createNewFile();
-
-			inStream = new FileInputStream(srcFile);
-			outStream = new FileOutputStream(desFile);
-
-			byte[] buffer = new byte[1024];
-			int length;
-			// copy the file content in bytes
-			while ((length = inStream.read(buffer)) > 0) {
-				outStream.write(buffer, 0, length);
-			}
-
-			inStream.close();
-			outStream.close();
-
-			return true;
-		} catch (IOException e) {
-			e.printStackTrace();
-			return false;
 		}
 	}
 
@@ -192,65 +173,7 @@ public class MasterServer extends Thread {
 		return ret.toString();
 	}
 
-	private String lsCommand() {
-		File folder = new File(directoryPath);
-		File[] listOfFiles = folder.listFiles();
-		int numFiles = 0;
-		StringBuilder ret = new StringBuilder();
-
-		for (File file : listOfFiles) {
-			if (file.isFile()) {
-				ret.append(getAccessPermissions(file) + '\t' + file.length() + '\t'
-						+ dateFormat.format(file.lastModified()) + '\t' + file.getName() + '\n');
-				numFiles++;
-
-			}
-		}
-		ret.insert(0, "Found " + numFiles + " items\n");
-
-		System.out.print(ret);
-		return ret.toString();
-	}
-
-	private String getAccessPermissions(File file) {
-		StringBuilder ret = new StringBuilder();
-		// file.canRead() ? ret.append('r') : ret.append('-');
-		if (file.canRead())
-			ret.append('r');
-		else
-			ret.append('-');
-
-		if (file.canWrite())
-			ret.append('w');
-		else
-			ret.append('-');
-
-		if (file.canExecute())
-			ret.append('x');
-		else
-			ret.append('-');
-
-		return ret.toString();
-	}
-
-	private void mkdirCommand() {
-		File folder = new File(this.directoryPath);
-		if (!folder.exists()) {
-			if (folder.mkdir()) {
-				System.out.println("Directory is created!");
-			} else {
-				System.err.println("Failed to create directory!");
-			}
-		}
-	}
-
-	private boolean rmCommand(String fileName) {
-		File file = new File(this.directoryPath + fileName);
-		return file.delete();
-	}
-
 	private HashSet<SlaveInfo> slaveList = new HashSet<SlaveInfo>();
-	private static Random random = new Random();
+	private HashMap<String, ArrayList<SlaveInfo>> masterFileList = new HashMap<String, ArrayList<SlaveInfo>>();
 	private final String directoryPath = "/tmp/YZFS/";
-	private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 }
