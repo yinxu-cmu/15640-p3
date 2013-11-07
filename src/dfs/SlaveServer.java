@@ -35,7 +35,6 @@ public class SlaveServer {
 
 		/* get connection to master server */
 		System.out.println(masterHostName);
-		Thread.sleep(3 * 1000);
 		Socket socket = new Socket(InetAddress.getByName(masterHostName), YZFS.MASTER_PORT);
 
 		/*
@@ -50,15 +49,18 @@ public class SlaveServer {
 		output.writeObject(msg);
 		output.flush();
 
-		ObjectInputStream input = new ObjectInputStream(socket.getInputStream());
+		InputStream input = socket.getInputStream();
+		ObjectInputStream objInput = null;
 		while (true) {
-			msg = (Message) input.readObject();
+			objInput = new ObjectInputStream(input);
+			msg = (Message) objInput.readObject();
 			if (msg instanceof CopyFromLocalCommandMsg) {
+				System.out.println("slave server receive a copy from local message");
 				executeCopyFromLocal((CopyFromLocalCommandMsg) msg);
-				AckMsg ack = new AckMsg(true);
-				output.reset();
-				output.writeObject(ack);
-				output.flush();
+//				AckMsg ack = new AckMsg(true);
+//				output.reset();
+//				output.writeObject(ack);
+//				output.flush();
 			}
 		}
 

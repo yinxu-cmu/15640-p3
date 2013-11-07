@@ -56,7 +56,9 @@ public class CommandLine {
 			try {
 				ServerSocket serverSocket = new ServerSocket(YZFS.CLIENT_PORT);
 				Socket socket = null;
-				while (true) {
+				// replication factor hard coded here
+				int i = 0;
+				while (i++ < 2) {
 					socket = serverSocket.accept();
 
 					File file = new File(localFileFullPath);

@@ -58,14 +58,13 @@ public class MasterServer extends Thread {
 				if (msg.isFromSlave()) {
 					/* save all the information into the list for future use */
 					SlaveInfo slaveInfo = new SlaveInfo();
-					slaveInfo.socket = socketServing;
+					slaveInfo.input = socketServing.getInputStream();
+					slaveInfo.output = socketServing.getOutputStream();
 					slaveList.add(slaveInfo);
 					System.out.println("One slave added");
 
 				}
 				this.parseMessage(msg);
-
-				System.out.println("debugging");
 
 			} catch (IOException e) {
 				e.printStackTrace();
@@ -87,6 +86,7 @@ public class MasterServer extends Thread {
 
 	private void parseMessage(Message msg) throws IOException, ClassNotFoundException {
 		if (msg instanceof CopyFromLocalCommandMsg) {
+			System.out.println("master server receive a copy form local message");
 			executeCopyFromLocal((CopyFromLocalCommandMsg) msg);
 		}
 	}
@@ -96,9 +96,9 @@ public class MasterServer extends Thread {
 
 		ArrayList<SlaveInfo> randomSlaveList = this.getRandomSlaves();
 		for (SlaveInfo slaveInfo : randomSlaveList) {
-			CommunicationModule.sendMessage(slaveInfo.socket, msg);
+			CommunicationModule.sendMessage(slaveInfo.input, slaveInfo.output, msg);
 		}
-		System.out.println("here??");
+		System.out.println("send message to " + randomSlaveList.size() + " hosts");
 
 	}
 
@@ -106,7 +106,7 @@ public class MasterServer extends Thread {
 		ArrayList<SlaveInfo> ret = new ArrayList<SlaveInfo>(this.slaveList);
 		if (YZFS.replicationFactor < this.slaveList.size()) {
 			Collections.shuffle(ret);
-			return (ArrayList<SlaveInfo>) ret.subList(0, (YZFS.replicationFactor - 1));
+			return new ArrayList<SlaveInfo>(ret.subList(0, (YZFS.replicationFactor)));
 		} else {
 			return ret;
 		}
