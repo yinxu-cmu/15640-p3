@@ -25,7 +25,7 @@ public class CommandLine {
 	}
 
 	public void parseCommandLine(String[] args) throws FileNotFoundException, IOException,
-			ClassNotFoundException {
+			ClassNotFoundException, InterruptedException {
 		/* args[0] always equals to "-yzfs" */
 		if (args[1].equals("copyFromLocal"))
 			copyFromLocal(args[2]);
@@ -63,7 +63,7 @@ public class CommandLine {
 	}
 
 	private void copyFromLocal(String localFileFullPath) throws FileNotFoundException, IOException,
-			ClassNotFoundException {
+			ClassNotFoundException, InterruptedException {
 		System.out.println("copy from local command line parsed");
 
 		CopyFromLocalCommandMsg request = new CopyFromLocalCommandMsg(localFileFullPath,
@@ -77,6 +77,8 @@ public class CommandLine {
 		fileTransfer.start();
 
 		CommunicationModule.sendMessage(masterIP, masterPort, request);
+		Thread.sleep(3*1000);
+		System.exit(0);
 	}
 
 	private class FileTransferThread extends Thread {
@@ -91,7 +93,7 @@ public class CommandLine {
 				Socket socket = null;
 				// replication factor hard coded here
 				int i = 0;
-				while (i++ < 2) {
+				while (true) {
 					socket = serverSocket.accept();
 
 					File file = new File(localFileFullPath);
@@ -110,10 +112,16 @@ public class CommandLine {
 					socket.close();
 				}
 			} catch (Exception e) {
-
+				System.err.println("ee");
 			}
 		}
+		
+		public void stopFileTrans() {
+			System.out.println("trying to stop the thread");
+			currentThread.interrupt();
+		}
 
+		private Thread currentThread = Thread.currentThread();
 		private String localFileFullPath;
 	}
 

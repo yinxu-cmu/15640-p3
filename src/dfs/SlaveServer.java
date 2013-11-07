@@ -103,7 +103,7 @@ public class SlaveServer {
 		file.delete();
 	}
 
-	public void writeMasterInfo(String masterHostName, int masterPort)
+	private void writeMasterInfo(String masterHostName, int masterPort)
 			throws FileNotFoundException, IOException {
 		Properties prop = new Properties();
 
