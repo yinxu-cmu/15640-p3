@@ -4,10 +4,12 @@ import java.io.File;
 import java.net.InetAddress;
 import java.util.ArrayList;
 
+import dfs.FileChunk;
+
 public class CopyFromLocalMsg extends Message {
 
-	public CopyFromLocalMsg(ArrayList<String> localFileListFullPath, InetAddress IP, int port) {
-		this.localFileListFullPath = localFileListFullPath;
+	public CopyFromLocalMsg(ArrayList<File> localFileList, InetAddress IP, int port) {
+		this.localFileList = localFileList;
 		this.fileTransferIP = IP;
 		this.fileTransferPort = port;
 	}
@@ -20,8 +22,8 @@ public class CopyFromLocalMsg extends Message {
 		return this.fileTransferPort;
 	}
 	
-	public ArrayList<String> getLocalFileListFullPath() {
-		return this.localFileListFullPath;
+	public ArrayList<File> getLocalFileListFullPath() {
+		return this.localFileList;
 	}
 	
 	public void setLocalFileFullPath(String localFileFullPath) {
@@ -37,11 +39,31 @@ public class CopyFromLocalMsg extends Message {
 		return file.getName();
 	}
 	
+	
+	public FileChunk getFileChunk() {
+		return fileChunk;
+	}
+
+	public void setFileChunk(FileChunk fileChunk) {
+		this.fileChunk = fileChunk;
+	}
+
+	public long getFileLength() {
+		return fileLength;
+	}
+
+	public void setFileLength(long fileLength) {
+		this.fileLength = fileLength;
+	}
+
+
 	private static final long serialVersionUID = -5861057913250168882L;
-	private ArrayList<String> localFileListFullPath;
+	private ArrayList<File> localFileList;
 	private String localFileFullPath;
 	private InetAddress fileTransferIP;
 	private int fileTransferPort;
 	
+	private FileChunk fileChunk;
+	private long fileLength;
 	
 }

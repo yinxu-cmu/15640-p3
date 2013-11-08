@@ -1,5 +1,6 @@
 package dfs;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -90,44 +91,58 @@ public class MasterServer extends Thread {
 
 	private void executeCatenate(CatenateMsg msg) throws UnknownHostException, IOException,
 			ClassNotFoundException {
-		String fileName = msg.getFileName();
-		SlaveInfo slaveInfo = this.masterFileList.get(fileName).get(0);
-		Message reply = CommunicationModule.sendMessage(slaveInfo.input, slaveInfo.output, msg);
-		msg.setCatReply(((CatenateMsg) reply).getCatReply());
+//		String fileName = msg.getFileName();
+//		SlaveInfo slaveInfo = this.masterFileList.get(fileName).get(0);
+//		Message reply = CommunicationModule.sendMessage(slaveInfo.input, slaveInfo.output, msg);
+//		msg.setCatReply(((CatenateMsg) reply).getCatReply());
 	}
 
 	private void executeRemove(RemoveMsg msg) throws UnknownHostException, IOException,
 			ClassNotFoundException {
-		String fileName = msg.getFileName();
-		ArrayList<SlaveInfo> slaveList = this.masterFileList.get(fileName);
-		for (SlaveInfo slaveInfo : slaveList) {
-			CommunicationModule.sendMessage(slaveInfo.input, slaveInfo.output, msg);
-		}
-		this.masterFileList.remove(fileName);
+//		String fileName = msg.getFileName();
+//		ArrayList<SlaveInfo> slaveList = this.masterFileList.get(fileName);
+//		for (SlaveInfo slaveInfo : slaveList) {
+//			CommunicationModule.sendMessage(slaveInfo.input, slaveInfo.output, msg);
+//		}
+//		this.masterFileList.remove(fileName);
 	}
 
 	private void executeList(ListMsg msg) {
 		StringBuilder strReply = new StringBuilder();
-		for (String str : this.masterFileList.keySet())
+		for (String str : this.fileToPart.keySet())
 			strReply.append(str + '\t');
-		strReply.insert(0, "Found " + this.masterFileList.size() + " items\n");
+		strReply.insert(0, "Found " + this.fileToPart.size() + " items\n");
 		msg.setListReply(strReply.toString());
 	}
 
 	private void executeCopyFromLocal(CopyFromLocalMsg msg) throws IOException,
 			ClassNotFoundException {
-		ArrayList<String> fileList = msg.getLocalFileListFullPath();
-		for (String fileFullPath : fileList) {
-			ArrayList<SlaveInfo> randomSlaveList = this.getRandomSlaves();
-			Message ack = new Message();
-			for (SlaveInfo slaveInfo : randomSlaveList) {
-				msg.setLocalFileFullPath(fileFullPath);
-				ack = CommunicationModule.sendMessage(slaveInfo.input, slaveInfo.output, msg);
-				if (ack instanceof AckMsg)
-					System.out.println("ack from slave server");
+		ArrayList<File> fileList = msg.getLocalFileListFullPath();
+		for (File file : fileList) {
+			FilePartition fp = new FilePartition(file.getAbsolutePath(),file.length());
+			ArrayList<FileChunk> chunkList = fp.generateFileChunks();
+			ArrayList<String> partList = new ArrayList<String>();
+			
+			for (FileChunk chunk : chunkList) {
+				ArrayList<SlaveInfo> randomSlaveList = this.getRandomSlaves();
+				msg.setFileChunk(chunk);
+				Message ack = new Message();
+				for (SlaveInfo slaveInfo : randomSlaveList) {
+					msg.setLocalFileFullPath(file.getAbsolutePath());
+					ack = CommunicationModule.sendMessage(slaveInfo.input, slaveInfo.output, msg);
+					if (ack instanceof AckMsg)
+						System.out.println("ack from slave server");
+				}
+				/* add to partToSlave list */
+				int partNum = chunk.partNum;
+				String partName = file.getName() + ".part" + partNum;
+				this.partToSlave.put(partName, randomSlaveList);
+				partList.add(partName);
+				
+				System.out.println("send message to " + randomSlaveList.size() + " hosts");
 			}
-			this.masterFileList.put(msg.getFileName(fileFullPath), randomSlaveList);
-			System.out.println("send message to " + randomSlaveList.size() + " hosts");
+			/* add to fileToPart list */
+			this.fileToPart.put(file.getName(), partList);
 		}
 
 	}
@@ -143,5 +158,7 @@ public class MasterServer extends Thread {
 	}
 
 	private HashSet<SlaveInfo> slaveList = new HashSet<SlaveInfo>();
-	private HashMap<String, ArrayList<SlaveInfo>> masterFileList = new HashMap<String, ArrayList<SlaveInfo>>();
+	private HashMap<String, ArrayList<String>> fileToPart = new HashMap<String, ArrayList<String>>();
+	private HashMap<String, ArrayList<SlaveInfo>> partToSlave = new HashMap<String, ArrayList<SlaveInfo>>();
+	
 }

@@ -144,14 +144,14 @@ public class SlaveServer {
 		// send the file name and range
 		OutputStream output = socket.getOutputStream();
 		ObjectOutputStream objOutput = new ObjectOutputStream(output);
-		objOutput.writeObject(msg);
+		objOutput.writeObject(msg.getFileChunk());
 		objOutput.flush();
 		
 		InputStream input = socket.getInputStream();
 		
 		FileOutputStream fileOutput = new FileOutputStream(YZFS.fileSystemWorkingDir
-				+ msg.getFileName(msg.getLocalFileFullPath()));
-		byte[] buffer = new byte[4096];
+				+ msg.getFileName(msg.getLocalFileFullPath()) + ".part" + msg.getFileChunk().partNum);
+		byte[] buffer = new byte[YZFS.RECORD_LENGTH];
 		int length = -1;
 		while ((length = input.read(buffer)) > 0) {
 			fileOutput.write(buffer, 0, length);

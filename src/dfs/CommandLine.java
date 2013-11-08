@@ -1,6 +1,5 @@
 package dfs;
 
-import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -8,6 +7,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.OutputStream;
+import java.io.RandomAccessFile;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -70,20 +70,20 @@ public class CommandLine {
 		System.out.println("copy from local command line parsed");
 
 		/* get the single file or a list of files under the directory */
-		ArrayList<String> strFileList = new ArrayList<String>();
+		ArrayList<File> fileList = new ArrayList<File>();
 		File localFileFullPath = new File(strLocalFileFullPath);
 		if (localFileFullPath.isFile()) {
-			strFileList.add(strLocalFileFullPath);
+			fileList.add(localFileFullPath);
 		} else if (localFileFullPath.isDirectory()) {
-			File[] fileList = localFileFullPath.listFiles();
-			for (File file : fileList) {
+			File[] fileListArray = localFileFullPath.listFiles();
+			for (File file : fileListArray) {
 				/* ignore directory and hidden files */
 				if (file.isFile() && file.getName().charAt(0) != '.')
-					strFileList.add(file.getAbsolutePath());
+					fileList.add(file);
 			}
 		}
 
-		CopyFromLocalMsg request = new CopyFromLocalMsg(strFileList, InetAddress.getLocalHost(), YZFS.CLIENT_PORT);
+		CopyFromLocalMsg request = new CopyFromLocalMsg(fileList, InetAddress.getLocalHost(), YZFS.CLIENT_PORT);
 		request.setDes(masterIP, masterPort);
 
 		/*
@@ -113,20 +113,20 @@ public class CommandLine {
 					/* get the message from slave, send the requested file to it */
 					InputStream input = socket.getInputStream();
 					ObjectInputStream objInput = new ObjectInputStream(input);
-					CopyFromLocalMsg msg = (CopyFromLocalMsg) objInput.readObject();
+					FileChunk chunk = (FileChunk) objInput.readObject();
 					
 					/* wrap up the file input stream */
-					String localFileFullPath = msg.getLocalFileFullPath();
-					File file = new File(localFileFullPath);
-					FileInputStream fileInput = new FileInputStream(file);
-					BufferedInputStream bufferedInput = new BufferedInputStream(fileInput);
+					String localFileFullPath = chunk.localFileFullPath;
+					RandomAccessFile raf = new RandomAccessFile(localFileFullPath, "r");
+					raf.seek(chunk.startIndex);
 					
 					OutputStream out = socket.getOutputStream();
 
-					byte[] buffer = new byte[4096];
+					byte[] buffer = new byte[YZFS.RECORD_LENGTH];
 					int length = -1;
 
-					while ((length = bufferedInput.read(buffer)) > 0) {
+					while (raf.getFilePointer() <= chunk.endIndex && 
+							(length = raf.read(buffer)) > 0) {
 						out.write(buffer, 0, length);
 						out.flush();
 					}

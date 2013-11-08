@@ -48,5 +48,8 @@ public class YZFS {
 	
 	public static final String fileSystemWorkingDir= "/tmp/YZFS/";
 	public static final String localWorkingDir = "/tmp/LOCAL/";
+	
+	public static final int RECORD_LENGTH = 4;
+	public static final int CHUNK_SIZE = 2; /* # of records per chunk */
 
 }
