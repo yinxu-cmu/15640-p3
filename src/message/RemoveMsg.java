@@ -4,15 +4,23 @@ import java.io.File;
 
 public class RemoveMsg extends Message{
 
-	public RemoveMsg(String localFileFullPath) {
-		this.localFileFullPath = localFileFullPath;
+	public RemoveMsg(String remoteFileName) {
+		this.remoteFileName = remoteFileName;
 	}
 	
 	public String getFileName() {
-		File file = new File(this.localFileFullPath);
-		return file.getName();
+		return this.remoteFileName;
 	}
 	
+	public String getFilePartName() {
+		return filePartName;
+	}
+
+	public void setFilePartName(String filePartName) {
+		this.filePartName = filePartName;
+	}
+
 	private static final long serialVersionUID = -226484318375906067L;
-	private String localFileFullPath = null;
+	private String remoteFileName = null;
+	private String filePartName;
 }

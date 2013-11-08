@@ -101,7 +101,6 @@ public class CommandLine {
 
 	private class FileTransferThread extends Thread {
 
-		@SuppressWarnings("resource")
 		public void run() {
 			try {
 				ServerSocket serverSocket = new ServerSocket(YZFS.CLIENT_PORT);

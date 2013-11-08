@@ -4,15 +4,22 @@ import java.io.File;
 
 public class CatenateMsg extends Message{
 	
-	public CatenateMsg(String localFileFullPath) {
-		File file = new File(localFileFullPath);
-		this.fileName = file.getName();
+	public CatenateMsg(String fileName) {
+		this.fileName = fileName;
 	}
 	
 	public String getFileName() {
 		return this.fileName;
 	}
 	
+	public String getFilePartName() {
+		return filePartName;
+	}
+
+	public void setFilePartName(String filePartName) {
+		this.filePartName = filePartName;
+	}
+
 	public String getCatReply() {
 		return catReply;
 	}
@@ -22,6 +29,7 @@ public class CatenateMsg extends Message{
 	}
 	
 	private String fileName = null;
+	private String filePartName;
 	private String catReply = null;
 	private static final long serialVersionUID = -722239763841540007L;
 

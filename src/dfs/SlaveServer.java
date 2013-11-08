@@ -81,7 +81,7 @@ public class SlaveServer {
 		BufferedReader buffer = null;
 		StringBuilder ret = new StringBuilder();
 		try {
-			buffer = new BufferedReader(new FileReader(YZFS.fileSystemWorkingDir + msg.getFileName()));
+			buffer = new BufferedReader(new FileReader(YZFS.fileSystemWorkingDir + msg.getFilePartName()));
 		} catch (FileNotFoundException e) {
 			// TODO Auto-generated catch block
 			ret.append("No such file\n");
@@ -100,7 +100,7 @@ public class SlaveServer {
 	}
 	
 	private void executeRemove(RemoveMsg msg) {
-		File file = new File(YZFS.fileSystemWorkingDir + msg.getFileName());
+		File file = new File(YZFS.fileSystemWorkingDir + msg.getFilePartName());
 		file.delete();
 	}
 
@@ -135,7 +135,6 @@ public class SlaveServer {
 		}
 	}
 
-	@SuppressWarnings("resource")
 	private boolean executeCopyFromLocal(CopyFromLocalMsg msg) throws IOException {
 		System.out.println("Start File Transfer from " + msg.getFileTransferIP() + " "
 				+ msg.getFileTransferPort());
@@ -150,7 +149,7 @@ public class SlaveServer {
 		InputStream input = socket.getInputStream();
 		
 		FileOutputStream fileOutput = new FileOutputStream(YZFS.fileSystemWorkingDir
-				+ msg.getFileName(msg.getLocalFileFullPath()) + ".part" + msg.getFileChunk().partNum);
+				+ msg.getFileName(msg.getFileChunk().localFileFullPath) + ".part" + msg.getFileChunk().partNum);
 		byte[] buffer = new byte[YZFS.RECORD_LENGTH];
 		int length = -1;
 		while ((length = input.read(buffer)) > 0) {

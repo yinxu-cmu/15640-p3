@@ -26,14 +26,6 @@ public class CopyFromLocalMsg extends Message {
 		return this.localFileList;
 	}
 	
-	public void setLocalFileFullPath(String localFileFullPath) {
-		this.localFileFullPath = localFileFullPath;
-	}
-	
-	public String getLocalFileFullPath() {
-		return this.localFileFullPath;
-	}
-	
 	public String getFileName(String fileFullPath) {
 		File file = new File(fileFullPath);
 		return file.getName();
@@ -59,7 +51,6 @@ public class CopyFromLocalMsg extends Message {
 
 	private static final long serialVersionUID = -5861057913250168882L;
 	private ArrayList<File> localFileList;
-	private String localFileFullPath;
 	private InetAddress fileTransferIP;
 	private int fileTransferPort;
 	

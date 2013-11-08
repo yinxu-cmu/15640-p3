@@ -91,20 +91,31 @@ public class MasterServer extends Thread {
 
 	private void executeCatenate(CatenateMsg msg) throws UnknownHostException, IOException,
 			ClassNotFoundException {
-//		String fileName = msg.getFileName();
-//		SlaveInfo slaveInfo = this.masterFileList.get(fileName).get(0);
-//		Message reply = CommunicationModule.sendMessage(slaveInfo.input, slaveInfo.output, msg);
-//		msg.setCatReply(((CatenateMsg) reply).getCatReply());
+		ArrayList<String> filePartList = this.fileToPart.get(msg.getFileName());
+		StringBuilder strReply = new StringBuilder();
+		for (String filePartName : filePartList) {
+			SlaveInfo slaveInfo = this.partToSlave.get(filePartName).get(0);
+			msg.setFilePartName(filePartName);
+			Message reply = CommunicationModule.sendMessage(slaveInfo.input, slaveInfo.output, msg);
+			strReply.append(((CatenateMsg) reply).getCatReply());
+		}
+		msg.setCatReply(strReply.toString());
 	}
 
 	private void executeRemove(RemoveMsg msg) throws UnknownHostException, IOException,
 			ClassNotFoundException {
-//		String fileName = msg.getFileName();
-//		ArrayList<SlaveInfo> slaveList = this.masterFileList.get(fileName);
-//		for (SlaveInfo slaveInfo : slaveList) {
-//			CommunicationModule.sendMessage(slaveInfo.input, slaveInfo.output, msg);
-//		}
-//		this.masterFileList.remove(fileName);
+		String fileName = msg.getFileName();
+		ArrayList<String> partList = this.fileToPart.get(fileName);
+		for (String filePartName : partList) {
+			msg.setFilePartName(filePartName);
+			ArrayList<SlaveInfo> slaveList = this.partToSlave.get(filePartName);
+			for (SlaveInfo slaveInfo : slaveList) {
+				CommunicationModule.sendMessage(slaveInfo.input,
+						slaveInfo.output, msg);
+			}
+			this.partToSlave.remove(filePartName);
+		}
+		this.fileToPart.remove(fileName);
 	}
 
 	private void executeList(ListMsg msg) {
@@ -119,8 +130,8 @@ public class MasterServer extends Thread {
 			ClassNotFoundException {
 		ArrayList<File> fileList = msg.getLocalFileListFullPath();
 		for (File file : fileList) {
-			FilePartition fp = new FilePartition(file.getAbsolutePath(),file.length());
-			ArrayList<FileChunk> chunkList = fp.generateFileChunks();
+			FilePartition filePartition = new FilePartition(file.getAbsolutePath(),file.length());
+			ArrayList<FileChunk> chunkList = filePartition.generateFileChunks();
 			ArrayList<String> partList = new ArrayList<String>();
 			
 			for (FileChunk chunk : chunkList) {
@@ -128,16 +139,15 @@ public class MasterServer extends Thread {
 				msg.setFileChunk(chunk);
 				Message ack = new Message();
 				for (SlaveInfo slaveInfo : randomSlaveList) {
-					msg.setLocalFileFullPath(file.getAbsolutePath());
 					ack = CommunicationModule.sendMessage(slaveInfo.input, slaveInfo.output, msg);
 					if (ack instanceof AckMsg)
 						System.out.println("ack from slave server");
 				}
 				/* add to partToSlave list */
 				int partNum = chunk.partNum;
-				String partName = file.getName() + ".part" + partNum;
-				this.partToSlave.put(partName, randomSlaveList);
-				partList.add(partName);
+				String filePartName = file.getName() + ".part" + partNum;
+				this.partToSlave.put(filePartName, randomSlaveList);
+				partList.add(filePartName);
 				
 				System.out.println("send message to " + randomSlaveList.size() + " hosts");
 			}
