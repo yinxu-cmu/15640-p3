@@ -1,1 +1,1 @@
-ls /tmp/YZFS
+ls -l /tmp/YZFS

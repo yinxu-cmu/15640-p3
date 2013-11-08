@@ -1,28 +1,15 @@
 package dfs;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.FileReader;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Random;
 
 import message.*;
 
@@ -51,9 +38,8 @@ public class MasterServer extends Thread {
 				System.out.println("Socket accepted from " + socketServing.getInetAddress() + " "
 						+ socketServing.getPort());
 
-				Message msg = null;
 				ObjectInputStream input = new ObjectInputStream(socketServing.getInputStream());
-				msg = (Message) input.readObject();
+				Message msg = (Message) input.readObject();
 
 				if (msg.isFromSlave()) {
 					/* save all the information into the list for future use */
@@ -82,9 +68,9 @@ public class MasterServer extends Thread {
 	}
 
 	private Message parseMessage(Message msg) throws IOException, ClassNotFoundException {
-		if (msg instanceof CopyFromLocalCommandMsg) {
+		if (msg instanceof CopyFromLocalMsg) {
 			System.out.println("master server receive a copy form local message");
-			executeCopyFromLocal((CopyFromLocalCommandMsg) msg);
+			executeCopyFromLocal((CopyFromLocalMsg) msg);
 			return new AckMsg(true);
 		} else if (msg instanceof ListMsg) {
 			System.out.println("master server receive a list message");
@@ -93,6 +79,7 @@ public class MasterServer extends Thread {
 		} else if (msg instanceof RemoveMsg) {
 			System.out.println("master server receive a remove message");
 			executeRemove((RemoveMsg) msg);
+			return new AckMsg(true);
 		} else if (msg instanceof CatenateMsg) {
 			System.out.println("master server receive a cat message");
 			executeCatenate((CatenateMsg) msg);
@@ -127,18 +114,21 @@ public class MasterServer extends Thread {
 		msg.setListReply(strReply.toString());
 	}
 
-	private void executeCopyFromLocal(CopyFromLocalCommandMsg msg) throws IOException,
+	private void executeCopyFromLocal(CopyFromLocalMsg msg) throws IOException,
 			ClassNotFoundException {
-		ArrayList<SlaveInfo> randomSlaveList = this.getRandomSlaves();
-		Message ack = new Message();
-		for (SlaveInfo slaveInfo : randomSlaveList) {
-			ack = CommunicationModule.sendMessage(slaveInfo.input, slaveInfo.output, msg);
-			if (ack instanceof AckMsg)
-				System.out.println("ack from slave server");
-			slaveInfo.fileList.add(msg.getFileName());
+		ArrayList<String> fileList = msg.getLocalFileListFullPath();
+		for (String fileFullPath : fileList) {
+			ArrayList<SlaveInfo> randomSlaveList = this.getRandomSlaves();
+			Message ack = new Message();
+			for (SlaveInfo slaveInfo : randomSlaveList) {
+				msg.setLocalFileFullPath(fileFullPath);
+				ack = CommunicationModule.sendMessage(slaveInfo.input, slaveInfo.output, msg);
+				if (ack instanceof AckMsg)
+					System.out.println("ack from slave server");
+			}
+			this.masterFileList.put(msg.getFileName(fileFullPath), randomSlaveList);
+			System.out.println("send message to " + randomSlaveList.size() + " hosts");
 		}
-		this.masterFileList.put(msg.getFileName(), randomSlaveList);
-		System.out.println("send message to " + randomSlaveList.size() + " hosts");
 
 	}
 
@@ -152,30 +142,6 @@ public class MasterServer extends Thread {
 		}
 	}
 
-	private String catCommand(String file) {
-		BufferedReader buffer = null;
-		StringBuilder ret = new StringBuilder();
-		try {
-			buffer = new BufferedReader(new FileReader(this.directoryPath + file));
-		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
-			ret.append("No such file\n");
-		}
-
-		String currentLine = null;
-		try {
-			while ((currentLine = buffer.readLine()) != null) {
-				ret.append(currentLine + '\n');
-			}
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		System.out.print(ret);
-		return ret.toString();
-	}
-
 	private HashSet<SlaveInfo> slaveList = new HashSet<SlaveInfo>();
 	private HashMap<String, ArrayList<SlaveInfo>> masterFileList = new HashMap<String, ArrayList<SlaveInfo>>();
-	private final String directoryPath = "/tmp/YZFS/";
 }

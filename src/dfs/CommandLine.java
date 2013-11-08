@@ -5,11 +5,14 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.ObjectInputStream;
 import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
 import java.util.Properties;
 
 import message.*;
@@ -62,19 +65,32 @@ public class CommandLine {
 		System.out.println(((ListMsg) reply).getListReply());
 	}
 
-	private void copyFromLocal(String localFileFullPath) throws FileNotFoundException, IOException,
+	private void copyFromLocal(String strLocalFileFullPath) throws FileNotFoundException, IOException,
 			ClassNotFoundException, InterruptedException {
 		System.out.println("copy from local command line parsed");
 
-		CopyFromLocalCommandMsg request = new CopyFromLocalCommandMsg(localFileFullPath,
-				InetAddress.getLocalHost(), YZFS.CLIENT_PORT);
+		/* get the single file or a list of files under the directory */
+		ArrayList<String> strFileList = new ArrayList<String>();
+		File localFileFullPath = new File(strLocalFileFullPath);
+		if (localFileFullPath.isFile()) {
+			strFileList.add(strLocalFileFullPath);
+		} else if (localFileFullPath.isDirectory()) {
+			File[] fileList = localFileFullPath.listFiles();
+			for (File file : fileList) {
+				/* ignore directory and hidden files */
+				if (file.isFile() && file.getName().charAt(0) != '.')
+					strFileList.add(file.getAbsolutePath());
+			}
+		}
+
+		CopyFromLocalMsg request = new CopyFromLocalMsg(strFileList, InetAddress.getLocalHost(), YZFS.CLIENT_PORT);
 		request.setDes(masterIP, masterPort);
-		
+
 		/*
 		 * the client need to open the listening socket first before send
 		 * message to master to avoid race condition in file transfer
 		 */
-		FileTransferThread fileTransfer = new FileTransferThread(localFileFullPath);
+		FileTransferThread fileTransfer = new FileTransferThread();
 		fileTransfer.start();
 
 		Message ack = CommunicationModule.sendMessage(request);
@@ -85,10 +101,7 @@ public class CommandLine {
 
 	private class FileTransferThread extends Thread {
 
-		public FileTransferThread(String localFileFullPath) {
-			this.localFileFullPath = localFileFullPath;
-		}
-
+		@SuppressWarnings("resource")
 		public void run() {
 			try {
 				ServerSocket serverSocket = new ServerSocket(YZFS.CLIENT_PORT);
@@ -97,9 +110,17 @@ public class CommandLine {
 				while (true) {
 					socket = serverSocket.accept();
 
+					/* get the message from slave, send the requested file to it */
+					InputStream input = socket.getInputStream();
+					ObjectInputStream objInput = new ObjectInputStream(input);
+					CopyFromLocalMsg msg = (CopyFromLocalMsg) objInput.readObject();
+					
+					/* wrap up the file input stream */
+					String localFileFullPath = msg.getLocalFileFullPath();
 					File file = new File(localFileFullPath);
 					FileInputStream fileInput = new FileInputStream(file);
 					BufferedInputStream bufferedInput = new BufferedInputStream(fileInput);
+					
 					OutputStream out = socket.getOutputStream();
 
 					byte[] buffer = new byte[4096];
@@ -113,11 +134,10 @@ public class CommandLine {
 					socket.close();
 				}
 			} catch (Exception e) {
-				System.err.println("ee");
+				e.printStackTrace();
 			}
 		}
 
-		private String localFileFullPath;
 	}
 
 	private InetAddress masterIP;

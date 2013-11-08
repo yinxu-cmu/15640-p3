@@ -7,12 +7,9 @@ import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
@@ -55,9 +52,9 @@ public class SlaveServer {
 		while (true) {
 			objInput = new ObjectInputStream(input);
 			msg = (Message) objInput.readObject();
-			if (msg instanceof CopyFromLocalCommandMsg) {
+			if (msg instanceof CopyFromLocalMsg) {
 				System.out.println("slave server receive a copy from local message");
-				executeCopyFromLocal((CopyFromLocalCommandMsg) msg);
+				executeCopyFromLocal((CopyFromLocalMsg) msg);
 				AckMsg ack = new AckMsg(true);
 				objOutput = new ObjectOutputStream(output);
 				objOutput.writeObject(ack);
@@ -65,6 +62,10 @@ public class SlaveServer {
 			} else if (msg instanceof RemoveMsg) {
 				System.out.println("slave server receive a remove message");
 				executeRemove((RemoveMsg) msg);
+				AckMsg ack = new AckMsg(true);
+				objOutput = new ObjectOutputStream(output);
+				objOutput.writeObject(ack);
+				objOutput.flush();
 			} else if (msg instanceof CatenateMsg) {
 				System.out.println("slave server receive a catenate message");
 				executeCatenate((CatenateMsg) msg);
@@ -134,18 +135,27 @@ public class SlaveServer {
 		}
 	}
 
-	private boolean executeCopyFromLocal(CopyFromLocalCommandMsg msg) throws IOException {
+	@SuppressWarnings("resource")
+	private boolean executeCopyFromLocal(CopyFromLocalMsg msg) throws IOException {
 		System.out.println("Start File Transfer from " + msg.getFileTransferIP() + " "
 				+ msg.getFileTransferPort());
 		Socket socket = new Socket(msg.getFileTransferIP(), msg.getFileTransferPort());
+
+		// send the file name and range
+		OutputStream output = socket.getOutputStream();
+		ObjectOutputStream objOutput = new ObjectOutputStream(output);
+		objOutput.writeObject(msg);
+		objOutput.flush();
+		
 		InputStream input = socket.getInputStream();
-		FileOutputStream output = new FileOutputStream(YZFS.fileSystemWorkingDir
-				+ msg.getFileName());
+		
+		FileOutputStream fileOutput = new FileOutputStream(YZFS.fileSystemWorkingDir
+				+ msg.getFileName(msg.getLocalFileFullPath()));
 		byte[] buffer = new byte[4096];
 		int length = -1;
 		while ((length = input.read(buffer)) > 0) {
-			output.write(buffer, 0, length);
-			output.flush();
+			fileOutput.write(buffer, 0, length);
+			fileOutput.flush();
 		}
 
 		System.out.println("Finish File Transfer");
