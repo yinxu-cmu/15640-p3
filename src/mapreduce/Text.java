@@ -21,5 +21,9 @@ public class Text implements Serializable, Cloneable{
 	public String toString() {
 		return this.value;
 	}
+	
+	public int getHashcode() {
+		return this.value.hashCode();
+	}
 
 }
