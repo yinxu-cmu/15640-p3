@@ -1,9 +1,12 @@
 package example;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -20,15 +23,21 @@ public class Driver {
 
 	/**
 	 * @param args
-	 * @throws Throwable 
+	 * @throws Throwable
 	 */
 	public static void main(String[] args) throws Throwable {
 		// TODO Auto-generated method stub
 		Driver driver = new Driver();
-		driver.map("test1.txt");
-		driver.map("test2.txt");
-		driver.map("test3.txt");
-		driver.reduce(new String[] { "test1.txt.out", "test2.txt.out", "test3.txt.out" });
+//		driver.map("test1.txt");
+//		driver.map("test2.txt");
+//		driver.map("test3.txt");
+//		driver.reduce(new String[] { "test1.txt.out", "test2.txt.out", "test3.txt.out" });
+		
+		driver.map("test4.txt");
+		driver.map("test5.txt");
+		driver.map("test6.txt");
+//		driver.reduce(new String[] { "test4.txt.out", "test5.txt.out", "test6.txt.out" });
+		
 	}
 
 	@SuppressWarnings({ "rawtypes", "unchecked", "resource" })
@@ -105,13 +114,13 @@ public class Driver {
 		itrValues = values.iterator();
 		Object[] combineMethodObjectArgs = { key, itrValues, combineOutput, reporter };
 		combineMethod.invoke(combiner, combineMethodObjectArgs);
-		
+
 		FileOutputStream fileOut = new FileOutputStream(input + ".out");
 		ObjectOutputStream objOut = new ObjectOutputStream(fileOut);
 		objOut.writeObject(combineOutput);
 
-//		while (combineOutput.queue.size() != 0)
-//			System.out.print(combineOutput.queue.poll() + "  ");
+		 while (combineOutput.queue.size() != 0)
+		 System.out.print(combineOutput.queue.poll() + "  ");
 	}
 
 	@SuppressWarnings({ "unused", "rawtypes", "unchecked" })
@@ -160,13 +169,18 @@ public class Driver {
 			// reducer.reduce((Text) key, itrValues, reduceOutput, reporter);
 			Object[] reduceMethodObjectArgs = { key, itrValues, reduceOutput, reporter };
 			reduceMethod.invoke(reducer, reduceMethodObjectArgs);
-			
-			FileOutputStream fileOut = new FileOutputStream("output");
-			ObjectOutputStream objOut = new ObjectOutputStream(fileOut);
-			objOut.writeObject(reduceOutput);
 
-			// while (reduceOutput.queue.size() != 0)
-			// System.out.print(reduceOutput.queue.poll() + "  ");
+			// bug here, cannot append or cannot override previous file
+			File file = new File("output.txt");
+			FileWriter fileWriter = new FileWriter(file, true);
+			BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
+
+			while (reduceOutput.queue.size() != 0) {
+				// System.out.print(reduceOutput.queue.poll() + "  ");
+				bufferedWriter.write(reduceOutput.queue.poll().toString() + "\n");
+			}
+			bufferedWriter.close();
+
 		}
 
 	}
@@ -195,8 +209,31 @@ public class Driver {
 	}
 
 	// should get from conf file
+//	@SuppressWarnings("rawtypes")
+//	private Class mapClass = WordCount.Map.class;
+//	@SuppressWarnings("rawtypes")
+//	private Class mapInputKeyClass = LongWritable.class;
+//	@SuppressWarnings("rawtypes")
+//	private Class mapInputValueClass = Text.class;
+//	@SuppressWarnings({ "rawtypes", "unused" })
+//	private Class mapOutputKeyClass = Text.class;
+//	@SuppressWarnings({ "rawtypes", "unused" })
+//	private Class mapOutputValueClass = IntWritable.class;
+//
+//	@SuppressWarnings("rawtypes")
+//	private Class reduceClass = WordCount.Reduce.class;
+//	@SuppressWarnings("rawtypes")
+//	private Class reduceInputKeyClass = Text.class;
+//	@SuppressWarnings({ "rawtypes", "unused" })
+//	private Class reduceInputValueClass = IntWritable.class;
+//	@SuppressWarnings({ "unused", "rawtypes" })
+//	private Class reduceOutputKeyClass = Text.class;
+//	@SuppressWarnings({ "rawtypes", "unused" })
+//	private Class reduceOutputValueClass = IntWritable.class;
+	
+	// should get from conf file
 	@SuppressWarnings("rawtypes")
-	private Class mapClass = WordCount.Map.class;
+	private Class mapClass = Maximum.Map.class;
 	@SuppressWarnings("rawtypes")
 	private Class mapInputKeyClass = LongWritable.class;
 	@SuppressWarnings("rawtypes")
@@ -204,17 +241,17 @@ public class Driver {
 	@SuppressWarnings({ "rawtypes", "unused" })
 	private Class mapOutputKeyClass = Text.class;
 	@SuppressWarnings({ "rawtypes", "unused" })
-	private Class mapOutputValueClass = IntWritable.class;
+	private Class mapOutputValueClass = LongWritable.class;
 
 	@SuppressWarnings("rawtypes")
-	private Class reduceClass = WordCount.Reduce.class;
+	private Class reduceClass = Maximum.Reduce.class;
 	@SuppressWarnings("rawtypes")
 	private Class reduceInputKeyClass = Text.class;
 	@SuppressWarnings({ "rawtypes", "unused" })
-	private Class reduceInputValueClass = IntWritable.class;
+	private Class reduceInputValueClass = LongWritable.class;
 	@SuppressWarnings({ "unused", "rawtypes" })
 	private Class reduceOutputKeyClass = Text.class;
 	@SuppressWarnings({ "rawtypes", "unused" })
-	private Class reduceOutputValueClass = IntWritable.class;
+	private Class reduceOutputValueClass = LongWritable.class;
 
 }

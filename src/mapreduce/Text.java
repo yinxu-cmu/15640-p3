@@ -7,6 +7,15 @@ public class Text implements Serializable, Cloneable{
 	private static final long serialVersionUID = 2778453252714387988L;
 	private String value = "";
 	
+	public Text() {
+		
+	}
+	
+	public Text(String string) {
+		// TODO Auto-generated constructor stub
+		this.value = string;
+	}
+
 	public void set(String value) {
 		// TODO Auto-generated method stub
 		this.value = value;
