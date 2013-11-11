@@ -19,11 +19,18 @@ public class YZHadoop {
 		if(args.length == 1) {
 			/* args[0]: hadoop job name
 			 * By defautl, take all files in YZFS as input files, and output
-			 * to the root directory of YZFS as well
+			 * to the root directory of YZFS as well. The default name is output
 			 */
 			try {
 				Class c = Class.forName(args[0]);
 				Object obj = c.newInstance();
+				
+				/* split the job and generate list of tasks */
+				//TO DO
+				
+				/* send out tasks */
+				//TO DO
+				
 			} catch (ClassNotFoundException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
