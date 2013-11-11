@@ -6,7 +6,7 @@ import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.PriorityQueue;
 
-public class OutputCollector<OutputKey, OutputValue> implements Serializable{
+public class OutputCollector<OutputKey, OutputValue> implements Serializable {
 
 	private static final long serialVersionUID = 8821782207468017517L;
 
@@ -14,13 +14,18 @@ public class OutputCollector<OutputKey, OutputValue> implements Serializable{
 
 	}
 
-	public void collect(OutputKey outputKey, OutputValue outputValue) throws SecurityException,
-			NoSuchMethodException, IllegalArgumentException, InstantiationException,
+	public void collect(OutputKey outputKey, OutputValue outputValue)
+			throws SecurityException, NoSuchMethodException,
+			IllegalArgumentException, InstantiationException,
 			IllegalAccessException, InvocationTargetException {
 		// dirty clone here
-		Method method = outputKey.getClass().getMethod("clone", null);
-		OutputKey outputKeyClone = (OutputKey) method.invoke(outputKey, null);
-		Entry entry = new Entry(outputKeyClone, outputValue);
+		Method cloneKey = outputKey.getClass().getMethod("clone", null);
+		OutputKey outputKeyClone = (OutputKey) cloneKey.invoke(outputKey, null);
+		Method cloneValue = outputValue.getClass().getMethod("clone", null);
+		OutputKey outputValueClone = (OutputKey) cloneValue.invoke(outputValue,
+				null);
+
+		Entry entry = new Entry(outputKeyClone, outputValueClone);
 		queue.add(entry);
 	}
 

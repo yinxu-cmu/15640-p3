@@ -20,6 +20,10 @@ public class LongWritable implements Serializable{
 		// TODO Auto-generated method stub
 		this.value = Long.parseLong(nextToken);
 	}
+	 
+	public void set(long l) {
+		this.value = l;
+	}
 
 	public long get() {
 		// TODO Auto-generated method stub
@@ -28,6 +32,12 @@ public class LongWritable implements Serializable{
 	
 	public String toString () {
 		return "" + this.value;
+	}
+	
+	public LongWritable clone() {
+		LongWritable clone = new LongWritable();
+		clone.set(this.value);
+		return clone;
 	}
 
 }

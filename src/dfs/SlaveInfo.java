@@ -7,7 +7,7 @@ import java.net.Socket;
 
 public class SlaveInfo {
 
-	public Socket socket;
+//	public Socket socket;
 	public InetAddress iaddr;
 	public int port;
 	public InputStream input;

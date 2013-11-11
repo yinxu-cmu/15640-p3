@@ -28,19 +28,23 @@ public class Driver {
 	public static void main(String[] args) throws Throwable {
 		// TODO Auto-generated method stub
 		Driver driver = new Driver();
+		
+		// word count example
 //		driver.map("test1.txt");
 //		driver.map("test2.txt");
 //		driver.map("test3.txt");
 //		driver.reduce(new String[] { "test1.txt.out", "test2.txt.out", "test3.txt.out" });
-		
+		// end of word count example
+
+		// max example
 		driver.map("test4.txt");
 		driver.map("test5.txt");
 		driver.map("test6.txt");
-//		driver.reduce(new String[] { "test4.txt.out", "test5.txt.out", "test6.txt.out" });
-		
+		driver.reduce(new String[] { "test4.txt.out", "test5.txt.out", "test6.txt.out" });
+		// end of max example
 	}
 
-	@SuppressWarnings({ "rawtypes", "unchecked", "resource" })
+	@SuppressWarnings({ "rawtypes", "unchecked" })
 	private void map(String input) throws ClassNotFoundException, SecurityException,
 			NoSuchMethodException, IllegalArgumentException, InstantiationException,
 			IllegalAccessException, InvocationTargetException, IOException {
@@ -65,6 +69,7 @@ public class Driver {
 		// get a set method from the inputValue
 		Method setInputValue = mapInputValueClass.getMethod("set", new Class<?>[] { String.class });
 
+		// invoke map method for every line of the input file
 		BufferedReader bufferedReader = new BufferedReader(new FileReader(input));
 		String line;
 		while ((line = bufferedReader.readLine()) != null) {
@@ -72,6 +77,9 @@ public class Driver {
 			Object[] mapMethodObjectArgs = { null, inputValue, mapOutput, reporter };
 			mapMethod.invoke(mapper, mapMethodObjectArgs);
 		}
+		
+		// print out the result of map
+//		System.out.println("debug");
 
 		// instantiate a combiner
 		Constructor combineConstr = reduceClass.getConstructor(null);
@@ -82,6 +90,7 @@ public class Driver {
 				OutputCollector.class, Reporter.class };
 		Method combineMethod = reduceClass.getMethod("reduce", combineMethodClassArgs);
 
+		// start combining the map result 
 		mapreduce.OutputCollector.Entry entry = (Entry) mapOutput.queue.poll();
 		mapreduce.OutputCollector.Entry tmpEntry = null;
 		ArrayList values = new ArrayList();
@@ -93,6 +102,8 @@ public class Driver {
 		Method method = key.getClass().getMethod("getHashcode", null);
 		int hash = ((Integer) method.invoke(key, null));
 		int tmpHash = 0;
+		
+		// invoke reduce method for every key-value pair that has the same key hashcode
 		while (mapOutput.queue.size() != 0) {
 			tmpEntry = (Entry) mapOutput.queue.poll();
 			tmpHash = ((Integer) method.invoke(tmpEntry.getKey(), null));
@@ -115,12 +126,13 @@ public class Driver {
 		Object[] combineMethodObjectArgs = { key, itrValues, combineOutput, reporter };
 		combineMethod.invoke(combiner, combineMethodObjectArgs);
 
+		// write the combine result into object file
 		FileOutputStream fileOut = new FileOutputStream(input + ".out");
 		ObjectOutputStream objOut = new ObjectOutputStream(fileOut);
 		objOut.writeObject(combineOutput);
 
-		 while (combineOutput.queue.size() != 0)
-		 System.out.print(combineOutput.queue.poll() + "  ");
+//		 while (combineOutput.queue.size() != 0)
+//		 System.out.print(combineOutput.queue.poll() + "  ");
 	}
 
 	@SuppressWarnings({ "unused", "rawtypes", "unchecked" })
@@ -138,6 +150,7 @@ public class Driver {
 				OutputCollector.class, Reporter.class };
 		Method reduceMethod = reduceClass.getMethod("reduce", reduceMethodClassArgs);
 
+		// read reduce inputs obj from map result obj
 		int size = inputs.length;
 		OutputCollector[] reduceInputs = new OutputCollector[size];
 		Entry[] entries = new Entry[size];
@@ -151,37 +164,39 @@ public class Driver {
 			entries[i] = (Entry) reduceInputs[i].queue.poll();
 		}
 
+		// get getHashcode method from key obj
 		Object key = entries[0].getKey();
 		Method getHashcode = key.getClass().getMethod("getHashcode", null);
 		ArrayList<Integer> minIndices = null;
 
+		// start the merge sort
 		while ((minIndices = getMinIndices(entries, getHashcode)) != null) {
 			key = entries[minIndices.get(0)].getKey();
 			ArrayList values = new ArrayList();
 			Iterator itrValues = null;
 
+			// add every value (that has the least key hash value) into the value list
 			for (int i : minIndices) {
 				values.add(entries[i].getValue());
 				entries[i] = (Entry) reduceInputs[i].queue.poll();
 			}
 
+			// invoke reduce method
 			itrValues = values.iterator();
-			// reducer.reduce((Text) key, itrValues, reduceOutput, reporter);
 			Object[] reduceMethodObjectArgs = { key, itrValues, reduceOutput, reporter };
 			reduceMethod.invoke(reducer, reduceMethodObjectArgs);
 
-			// bug here, cannot append or cannot override previous file
-			File file = new File("output.txt");
-			FileWriter fileWriter = new FileWriter(file, true);
-			BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
-
-			while (reduceOutput.queue.size() != 0) {
-				// System.out.print(reduceOutput.queue.poll() + "  ");
-				bufferedWriter.write(reduceOutput.queue.poll().toString() + "\n");
-			}
-			bufferedWriter.close();
-
 		}
+		
+		File file = new File("output.txt");
+		FileWriter fileWriter = new FileWriter(file);
+		BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
+
+		while (reduceOutput.queue.size() != 0) {
+//			 System.out.print(reduceOutput.queue.poll() + "  ");
+			bufferedWriter.write(reduceOutput.queue.poll().toString() + "\n");
+		}
+		bufferedWriter.close();
 
 	}
 

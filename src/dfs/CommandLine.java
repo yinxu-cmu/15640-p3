@@ -20,7 +20,7 @@ import message.*;
 public class CommandLine {
 
 	public CommandLine() throws FileNotFoundException, IOException {
-		// load a properties file and read master ip and port
+		// load a properties file to read master ip and port
 		Properties prop = new Properties();
 		prop.load(new FileInputStream(YZFS.fileSystemWorkingDir + ".masterinfo.config"));
 		this.masterIP = InetAddress.getByName(prop.getProperty("master host name"));
@@ -29,7 +29,7 @@ public class CommandLine {
 
 	public void parseCommandLine(String[] args) throws FileNotFoundException, IOException,
 			ClassNotFoundException, InterruptedException {
-		/* args[0] always equals to "-yzfs" */
+		/* args[0] always equals to "-yzfs", invoke the method according to args[1] */
 		if (args[1].equals("copyFromLocal"))
 			copyFromLocal(args[2]);
 		else if (args[1].equals("ls"))
@@ -49,10 +49,10 @@ public class CommandLine {
 		System.out.println(((CatenateMsg) reply).getCatReply());
 	}
 
-	private void remove(String localFileFullPath) throws UnknownHostException, IOException,
+	private void remove(String remoteFileName) throws UnknownHostException, IOException,
 			ClassNotFoundException {
 		System.out.println("remove command line parsed");
-		RemoveMsg request = new RemoveMsg(localFileFullPath);
+		RemoveMsg request = new RemoveMsg(remoteFileName);
 		request.setDes(masterIP, masterPort);
 		CommunicationModule.sendMessage(request);
 	}
@@ -69,7 +69,7 @@ public class CommandLine {
 			ClassNotFoundException, InterruptedException {
 		System.out.println("copy from local command line parsed");
 
-		/* get the single file or a list of files under the directory */
+		/* get the single file or a list of files under the directory into the fileList*/
 		ArrayList<File> fileList = new ArrayList<File>();
 		File localFileFullPath = new File(strLocalFileFullPath);
 		if (localFileFullPath.isFile()) {
@@ -83,6 +83,7 @@ public class CommandLine {
 			}
 		}
 
+		/* tell the master and slave server the file transfer IP and port */
 		CopyFromLocalMsg request = new CopyFromLocalMsg(fileList, InetAddress.getLocalHost(), YZFS.CLIENT_PORT);
 		request.setDes(masterIP, masterPort);
 
@@ -105,7 +106,7 @@ public class CommandLine {
 			try {
 				ServerSocket serverSocket = new ServerSocket(YZFS.CLIENT_PORT);
 				Socket socket = null;
-				// replication factor hard coded here
+
 				while (true) {
 					socket = serverSocket.accept();
 
@@ -121,6 +122,8 @@ public class CommandLine {
 					
 					OutputStream out = socket.getOutputStream();
 
+					/* send byte array RECORD_LENGTH by RECORD_LENGTH, 
+					 * starting from startIndex until endIndex */
 					byte[] buffer = new byte[YZFS.RECORD_LENGTH];
 					int length = -1;
 

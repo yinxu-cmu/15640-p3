@@ -12,6 +12,11 @@ import message.*;
 
 public class CommunicationModule {
 
+	/**
+	 * send the Message to the IP and Port specified in msg DesIP and DesPort
+	 * @param msg
+	 * @return
+	 */
 	public static Message sendMessage(Message msg) throws UnknownHostException, IOException,
 			ClassNotFoundException {
 		Message reply = null;
@@ -30,13 +35,17 @@ public class CommunicationModule {
 		return reply;
 	}
 	
+	/**
+	 * send the Message to the InputStream specified at args
+	 * @param input
+	 * @param output
+	 * @param msg
+	 * @return
+	 */
 	public static Message sendMessage(InputStream input, OutputStream output, Message msg)
 			throws UnknownHostException, IOException, ClassNotFoundException {
 		Message reply = null;
 		ObjectOutputStream objOutput = new ObjectOutputStream(output);
-
-		/* open socket talk to the receiver */
-		// output = new ObjectOutputStream(socket.getOutputStream());
 
 		objOutput.writeObject(msg);
 		objOutput.flush();

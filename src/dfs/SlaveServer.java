@@ -47,6 +47,7 @@ public class SlaveServer {
 		objOutput.writeObject(msg);
 		objOutput.flush();
 
+		/* get msg from the master server and dispatch the msg to according method */
 		InputStream input = socket.getInputStream();
 		ObjectInputStream objInput = null;
 		while (true) {
@@ -77,6 +78,10 @@ public class SlaveServer {
 
 	}
 	
+	/**
+	 * put the content of the file into the original msg
+	 * @param msg
+	 */
 	private void executeCatenate (CatenateMsg msg) {
 		BufferedReader buffer = null;
 		StringBuilder ret = new StringBuilder();
@@ -99,11 +104,48 @@ public class SlaveServer {
 		msg.setCatReply(ret.toString());
 	}
 	
+	/**
+	 * delete the particular file
+	 * @param msg
+	 */
 	private void executeRemove(RemoveMsg msg) {
 		File file = new File(YZFS.fileSystemWorkingDir + msg.getFilePartName());
 		file.delete();
 	}
 
+	/**
+	 * fetch the file chunk from client
+	 * @param msg
+	 * @return
+	 * @throws IOException
+	 */
+	private boolean executeCopyFromLocal(CopyFromLocalMsg msg) throws IOException {
+		System.out.println("Start File Transfer from " + msg.getFileTransferIP() + " "
+				+ msg.getFileTransferPort());
+		Socket socket = new Socket(msg.getFileTransferIP(), msg.getFileTransferPort());
+
+		// send the file name and range
+		OutputStream output = socket.getOutputStream();
+		ObjectOutputStream objOutput = new ObjectOutputStream(output);
+		objOutput.writeObject(msg.getFileChunk());
+		objOutput.flush();
+		
+		InputStream input = socket.getInputStream();
+		
+		/* create the file and write what the server get from socket into the file */
+		FileOutputStream fileOutput = new FileOutputStream(YZFS.fileSystemWorkingDir
+				+ msg.getFileName(msg.getFileChunk().localFileFullPath) + ".part" + msg.getFileChunk().partNum);
+		byte[] buffer = new byte[YZFS.RECORD_LENGTH];
+		int length = -1;
+		while ((length = input.read(buffer)) > 0) {
+			fileOutput.write(buffer, 0, length);
+			fileOutput.flush();
+		}
+
+		System.out.println("Finish File Transfer");
+		return true;
+	}
+	
 	private void writeMasterInfo(String masterHostName, int masterPort)
 			throws FileNotFoundException, IOException {
 		Properties prop = new Properties();
@@ -133,31 +175,5 @@ public class SlaveServer {
 			for (File file : listOfFiles)
 				file.delete();
 		}
-	}
-
-	private boolean executeCopyFromLocal(CopyFromLocalMsg msg) throws IOException {
-		System.out.println("Start File Transfer from " + msg.getFileTransferIP() + " "
-				+ msg.getFileTransferPort());
-		Socket socket = new Socket(msg.getFileTransferIP(), msg.getFileTransferPort());
-
-		// send the file name and range
-		OutputStream output = socket.getOutputStream();
-		ObjectOutputStream objOutput = new ObjectOutputStream(output);
-		objOutput.writeObject(msg.getFileChunk());
-		objOutput.flush();
-		
-		InputStream input = socket.getInputStream();
-		
-		FileOutputStream fileOutput = new FileOutputStream(YZFS.fileSystemWorkingDir
-				+ msg.getFileName(msg.getFileChunk().localFileFullPath) + ".part" + msg.getFileChunk().partNum);
-		byte[] buffer = new byte[YZFS.RECORD_LENGTH];
-		int length = -1;
-		while ((length = input.read(buffer)) > 0) {
-			fileOutput.write(buffer, 0, length);
-			fileOutput.flush();
-		}
-
-		System.out.println("Finish File Transfer");
-		return true;
 	}
 }

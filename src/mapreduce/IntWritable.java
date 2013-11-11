@@ -23,5 +23,10 @@ public class IntWritable implements Serializable{
 	public String toString () {
 		return "" + this.value;
 	}
+	
+	public IntWritable clone() {
+		IntWritable clone = new IntWritable(this.value);
+		return clone;
+	}
 
 }
