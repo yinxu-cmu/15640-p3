@@ -85,6 +85,10 @@ public class MasterServer extends Thread {
 			System.out.println("master server receive a cat message");
 			executeCatenate((CatenateMsg) msg);
 			return msg;
+		} else if (msg instanceof RequestFileMapMsg) {
+			System.out.println("master server receive a cat message");
+			executeRequestFileMap((RequestFileMapMsg) msg);
+			return msg;
 		}
 		return null;
 	}
@@ -121,7 +125,7 @@ public class MasterServer extends Thread {
 	private void executeList(ListMsg msg) {
 		StringBuilder strReply = new StringBuilder();
 		for (String str : this.fileToPart.keySet())
-			strReply.append(str + '\t');
+			strReply.append(str + ' '); //11.10 changed from \t to space
 		strReply.insert(0, "Found " + this.fileToPart.size() + " items\n");
 		msg.setListReply(strReply.toString());
 	}
@@ -155,6 +159,11 @@ public class MasterServer extends Thread {
 			this.fileToPart.put(file.getName(), partList);
 		}
 
+	}
+	
+	public void executeRequestFileMap(RequestFileMapMsg msg) {
+		msg.setFileToPart(fileToPart);
+		msg.setPartToSlave(partToSlave);
 	}
 
 	private ArrayList<SlaveInfo> getRandomSlaves() {

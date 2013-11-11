@@ -3,12 +3,28 @@
  */
 package mapreduce;
 
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.net.InetAddress;
+import java.net.Socket;
+import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map.Entry;
+import java.util.Queue;
+
+import message.*;
+
+import dfs.SlaveInfo;
+import dfs.YZFS;
+
 /**
  * @author yinxu
  * main YZHadoop program running on top of YZFS file system
  */
 public class YZHadoop {
-
+	
 	/**
 	 * @param args
 	 */
@@ -21,23 +37,17 @@ public class YZHadoop {
 			 * By defautl, take all files in YZFS as input files, and output
 			 * to the root directory of YZFS as well. The default name is output
 			 */
+			NewJobMsg msg = new NewJobMsg(args[0]);
 			try {
-				Class c = Class.forName(args[0]);
-				Object obj = c.newInstance();
+				Socket sock = new Socket(YZFS.MASTER_HOST, YZFS.MP_SLAVE_PORT);
+				ObjectOutputStream output = new ObjectOutputStream(sock.getOutputStream());
+				output.writeObject(msg);
+				System.out.println("Sent out job: " + args[0]);
 				
-				/* split the job and generate list of tasks */
-				//TO DO
-				
-				/* send out tasks */
-				//TO DO
-				
-			} catch (ClassNotFoundException e) {
+			} catch (UnknownHostException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
-			} catch (InstantiationException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (IllegalAccessException e) {
+			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}

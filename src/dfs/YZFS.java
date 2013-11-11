@@ -51,5 +51,10 @@ public class YZFS {
 	
 	public static final int RECORD_LENGTH = 4;
 	public static final int CHUNK_SIZE = 2; /* # of records per chunk */
+	
+	//11.10 added masterhost name as a global var
+	public static final String MASTER_HOST = "localhost";
+	//mapreduce slave port
+	public static final int MP_SLAVE_PORT = 15444;
 
 }

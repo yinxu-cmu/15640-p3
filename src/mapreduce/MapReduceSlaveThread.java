@@ -18,8 +18,12 @@ public class MapReduceSlaveThread extends Thread{
 	
 	@Override
 	public void run() {
-		/* ??? now just assume it is a map task */
-		String[] inputFileNames = task.getInputFilesName();
+		
+		//if the task is a map task
+		//perform mapper
+		
+		//send back ack reply
+		
 		
 	}
 }

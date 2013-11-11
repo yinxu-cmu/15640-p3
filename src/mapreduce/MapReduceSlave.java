@@ -9,6 +9,8 @@ import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 
+import dfs.YZFS;
+
 /**
  * @author yinxu
  * MapReduce slave need to run on each participant node. It receives MapReduceTask
@@ -24,14 +26,10 @@ public class MapReduceSlave {
 	private static boolean ongoing = true;
 	
 	public static void main(String[] args) {
-		if (args.length == 2 && args[0].equals("-p")) {
-			/*
-			 * args[0]: -p
-			 * args[1]: port #
-			 */
+		if (args.length == 2 && args[0].equals("start")) {
+			
 			try {
-				int port = Integer.parseInt(args[1]);
-				ServerSocket ss = new ServerSocket(port);
+				ServerSocket ss = new ServerSocket(YZFS.MP_SLAVE_PORT);
 				ObjectInputStream input;
 				ObjectOutputStream output;
 				while (ongoing) {
