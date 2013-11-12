@@ -6,7 +6,9 @@ package mapreduce;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.HashMap;
 import java.util.Queue;
+import java.util.concurrent.atomic.AtomicInteger;
 
 
 import dfs.YZFS;
@@ -20,6 +22,8 @@ public class MapReduceMaster {
 	private static boolean ongoing = true;
 	public static Queue<MapReduceTask> mapQueue;
 	public static Queue<MapReduceTask> reduceQueue;
+	public static AtomicInteger jobId = new AtomicInteger(0);
+	public static HashMap<Integer, Integer> jobToTaskCount;
 	
 	public static void main(String[] args) {
 		

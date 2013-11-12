@@ -1,9 +1,12 @@
 package dfs;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
@@ -97,6 +100,10 @@ public class MasterServer extends Thread {
 		} else if (msg instanceof RequestFileMapMsg) {
 			System.out.println("master server receive a cat message");
 			executeRequestFileMap((RequestFileMapMsg) msg);
+			return msg;
+		} else if (msg instanceof DownloadFileMsg) {
+			System.out.println("master server receive a downloadfile message");
+			executeDownloadFileMsg((DownloadFileMsg) msg);
 			return msg;
 		}
 		return null;
@@ -200,6 +207,30 @@ public class MasterServer extends Thread {
 	public void executeRequestFileMap(RequestFileMapMsg msg) {
 		msg.setFileToPart(fileToPart);
 		msg.setPartToSlave(partToSlave);
+	}
+	
+	public void executeDownloadFileMsg(DownloadFileMsg msg) throws IOException {
+		// ??? can use thread here to improve performace
+		System.out.println("Start File Download from " + msg.getDesIP() + " "
+				+ msg.getDesPort());
+		Socket socket = new Socket(msg.getDesIP(), msg.getDesPort());
+
+		InputStream input = socket.getInputStream();
+		
+		/* create the file and write what the server get from socket into the file */
+		FileOutputStream fileOutput = new FileOutputStream(msg.getFileFullPath());
+		byte[] buffer = new byte[1024];
+		int length = -1;
+		while ((length = input.read(buffer)) > 0) {
+			fileOutput.write(buffer, 0, length);
+			fileOutput.flush();
+		}
+
+		System.out.println("Finish File Downlaod");
+		msg.setSuccessful(true);
+		socket.close();
+		input.close();
+		fileOutput.close();
 	}
 
 	/**

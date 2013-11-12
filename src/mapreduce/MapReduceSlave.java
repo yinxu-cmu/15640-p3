@@ -34,23 +34,15 @@ public class MapReduceSlave {
 				ObjectOutputStream output;
 				while (ongoing) {
 					Socket sock = ss.accept();
-					input = new ObjectInputStream(sock.getInputStream());
-					Object obj = input.readObject();
+					//start to run the task. ??? Is thread needed here? yes
+					MapReduceSlaveThread slaveThread = new MapReduceSlaveThread(sock);
+					slaveThread.start();
 					
-					if (obj instanceof MapReduceTask) {
-						MapReduceTask task = (MapReduceTask) obj;
-						//start to run the task. ??? Is thread needed here? yes
-						MapReduceSlaveThread slaveThread = new MapReduceSlaveThread(task);
-						slaveThread.start();
-					}
 				}
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
-			} catch (ClassNotFoundException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+			} 
 		} else {
 			System.out.println("invalid arguments");
 		}
