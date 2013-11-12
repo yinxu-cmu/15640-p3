@@ -105,7 +105,7 @@ public class MapReduceMasterThread extends Thread{
 		for(ArrayList<String> partList : fileToPart.values()) {
 			for(String part : partList) {
 				MapReduceTask task = new MapReduceTask();
-				task.setInputFileName(part);
+				task.setInputFileName(new String[] {part});
 				task.setOutputFileName(part + ".output");
 				//alwasy choose the first candidate
 				InetAddress target = partToSlave.get(part).get(0).iaddr;
