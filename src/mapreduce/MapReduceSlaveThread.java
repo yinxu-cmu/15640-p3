@@ -106,10 +106,12 @@ public class MapReduceSlaveThread extends Thread {
 
 		
 		Object obj;
+		MapReduceTask task = null;
 		try {
 			obj = input.readObject();
+			System.out.println("received a task object");
 			if (obj instanceof MapReduceTask) {
-				MapReduceTask task = (MapReduceTask) obj;
+				task = (MapReduceTask) obj;
 			} else {
 				System.out.println("invalid object received");
 			}

@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.Queue;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -20,10 +21,10 @@ import dfs.YZFS;
 public class MapReduceMaster {
 	
 	private static boolean ongoing = true;
-	public static Queue<MapReduceTask> mapQueue;
-	public static Queue<MapReduceTask> reduceQueue;
+	public static Queue<MapReduceTask> mapQueue = new LinkedList<MapReduceTask>();
+	public static Queue<MapReduceTask> reduceQueue = new LinkedList<MapReduceTask>();
 	public static AtomicInteger jobId = new AtomicInteger(0);
-	public static HashMap<Integer, Integer> jobToTaskCount;
+	public static HashMap<Integer, Integer> jobToTaskCount = new HashMap<Integer, Integer>();
 	
 	public static void main(String[] args) {
 		

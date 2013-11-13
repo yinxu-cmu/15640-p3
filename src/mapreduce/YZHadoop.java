@@ -41,13 +41,25 @@ public class YZHadoop {
 			try {
 				Socket sock = new Socket(YZFS.MASTER_HOST, YZFS.MP_SLAVE_PORT);
 				ObjectOutputStream output = new ObjectOutputStream(sock.getOutputStream());
+				ObjectInputStream input = new ObjectInputStream(sock.getInputStream());
 				output.writeObject(msg);
-				System.out.println("Sent out job: " + args[0]);
+				output.flush();
+				
+				AckMsg ack = (AckMsg) input.readObject();
+				
+				if (ack.isSuccessful()) {
+					System.out.println("Sent out job: " + args[0]);
+				} else {
+					System.out.println("Sent out failed ");
+				}
 				
 			} catch (UnknownHostException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (ClassNotFoundException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}

@@ -52,8 +52,15 @@ public class MapReduceMasterThread extends Thread{
 	public void run() {
 		
 		Object msg = null;
+//		NewJobMsg msg = null;
 		try {
+			System.out.println("Reading object from socket");
 			msg = (Object) input.readObject();
+//			msg = (NewJobMsg) input.readObject();
+//			System.out.println(msg.getJobName());
+			AckMsg ack = new AckMsg(true);
+			output.writeObject(ack);
+			output.flush();
 			
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
@@ -69,10 +76,13 @@ public class MapReduceMasterThread extends Thread{
 			ackTaskFinish((MapReduceTask)msg);
 		}
 		
+		
 	}
 	
 	public void executeNewJob(NewJobMsg msg) {
 		String jobName = msg.getJobName(); // For future use
+		System.out.println("enterred executeNewJob: "+jobName);
+		
 		int jobId = MapReduceMaster.jobId.incrementAndGet();
 		
 		synchronized (MapReduceMaster.jobToTaskCount) {
@@ -84,15 +94,20 @@ public class MapReduceMasterThread extends Thread{
 		Socket sockFS;
 		try {
 			sockFS = new Socket(YZFS.MASTER_HOST, YZFS.MASTER_PORT);
+			System.out.println("1");
 			ObjectOutputStream outputFS = new ObjectOutputStream(sockFS.getOutputStream());
-			ObjectInputStream inputFS = new ObjectInputStream(sockFS.getInputStream());
+			System.out.println("2");
+			System.out.println("3");
 			
+			System.out.println("request filemap...");
 			RequestFileMapMsg rfm = new RequestFileMapMsg();
 			outputFS.writeObject(rfm);
 			outputFS.flush();
 			
+			ObjectInputStream inputFS = new ObjectInputStream(sockFS.getInputStream());
 			RequestFileMapMsg reply = (RequestFileMapMsg)inputFS.readObject();
 			
+			System.out.println("request filemap done.");
 			// generate task list
 			generateTaskList(reply, jobName, jobId);
 			System.out.println("new job:" + jobName + "has been added");
@@ -272,8 +287,8 @@ public class MapReduceMasterThread extends Thread{
 
 		}
 
-//		File file = new File("/tmp/YZFS/output.txt");
-		File file = new File("/YZFS/output.txt");
+		File file = new File("/tmp/YZFS/output.txt");
+//		File file = new File("/YZFS/output.txt");
 		FileWriter fileWriter = new FileWriter(file);
 		BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
 
@@ -309,8 +324,8 @@ public class MapReduceMasterThread extends Thread{
 	}
 	
 	public void setReduceInputFile(MapReduceTask task) {
-//		File[] files = new File("/tmp/YZFS/").listFiles();
-		File[] files = new File("/YZFS/").listFiles();
+		File[] files = new File("/tmp/YZFS/").listFiles();
+//		File[] files = new File("/YZFS/").listFiles();
 		String[] inputFiles = new String[files.length];
 		for (int i = 0; i < inputFiles.length; i++) {
 			inputFiles[i] = files[i].toString();

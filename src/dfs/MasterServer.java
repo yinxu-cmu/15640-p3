@@ -61,6 +61,7 @@ public class MasterServer extends Thread {
 				Message reply = this.parseMessage(msg);
 				ObjectOutputStream output = new ObjectOutputStream(socketServing.getOutputStream());
 				output.writeObject(reply);
+				output.flush();
 				
 				System.out.println("reply msg sent from master");
 
