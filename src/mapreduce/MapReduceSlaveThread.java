@@ -44,20 +44,19 @@ import message.Message;
 public class MapReduceSlaveThread extends Thread {
 
 //	public static void main(String[] args) throws InterruptedException {
-//		// System.out.println("sadf");
 //		MapReduceTask task = new MapReduceTask();
 //
-////		task.setMapClass(Maximum.Map.class);
-////		task.setMapInputKeyClass(LongWritable.class);
-////		task.setMapInputValueClass(Text.class);
-////		task.setMapOutputKeyClass(Text.class);
-////		task.setMapOutputValueClass(LongWritable.class);
-////
-////		task.setReduceClass(Maximum.Reduce.class);
-////		task.setReduceInputKeyClass(Text.class);
-////		task.setReduceInputValueClass(LongWritable.class);
-////		task.setReduceOutputKeyClass(Text.class);
-////		task.setReduceOutputValueClass(LongWritable.class);
+//		task.setMapClass(Maximum.Map.class);
+//		task.setMapInputKeyClass(LongWritable.class);
+//		task.setMapInputValueClass(Text.class);
+//		task.setMapOutputKeyClass(Text.class);
+//		task.setMapOutputValueClass(LongWritable.class);
+//
+//		task.setReduceClass(Maximum.Reduce.class);
+//		task.setReduceInputKeyClass(Text.class);
+//		task.setReduceInputValueClass(LongWritable.class);
+//		task.setReduceOutputKeyClass(Text.class);
+//		task.setReduceOutputValueClass(LongWritable.class);
 //
 //		task.setType(MapReduceTask.MAP);
 //
@@ -89,9 +88,12 @@ public class MapReduceSlaveThread extends Thread {
 	private Socket sock;
 	private ObjectInputStream input;
 	private ObjectOutputStream output;
+	private ServerSocket serverSocket;
 
-	public MapReduceSlaveThread(Socket sock) {
+	public MapReduceSlaveThread(Socket sock, ServerSocket serverSocket) {
 		this.sock = sock;
+		this.serverSocket = serverSocket;
+		
 		try {
 			input = new ObjectInputStream(sock.getInputStream());
 			output = new ObjectOutputStream(sock.getOutputStream());
@@ -131,19 +133,32 @@ public class MapReduceSlaveThread extends Thread {
 				// send back ack(task object) when map is done
 				output.writeObject(task);
 				output.flush();
-				input.close();
-				output.close();
-				
-				//open local download port. ???HARDCODING PORTNUMBER
-				ServerSocket serverSocket = new ServerSocket(15640);
+//				input.close();
+//				output.close();
 				
 				
+				
+				System.out.println("one map task finished");
 				// send download msg to file server
-				DownloadFileMsg dfmsg = new DownloadFileMsg(InetAddress.getLocalHost(), 15640);
-				Socket sockFS = new Socket(YZFS.MASTER_HOST, YZFS.MASTER_PORT);
-				OutputStream outputFS = sockFS.getOutputStream();
-				InputStream inputFS = sockFS.getInputStream();
-				DownloadFileMsg reply = (DownloadFileMsg) CommunicationModule.sendMessage(inputFS, outputFS, dfmsg);
+				DownloadFileMsg dfmsg = new DownloadFileMsg(InetAddress.getLocalHost(), YZFS.MP_DOWNLOAD_PORT);
+				dfmsg.setFileFullPath(YZFS.fileSystemWorkingDir + task.getOutputFileName());
+				Socket sockFS = new Socket(InetAddress.getByName(YZFS.MASTER_HOST), YZFS.MASTER_PORT);
+//				OutputStream outputFS = sockFS.getOutputStream();
+//				InputStream inputFS = sockFS.getInputStream();
+				System.out.println("sending downloading request");
+//				DownloadFileMsg reply = (DownloadFileMsg) CommunicationModule.sendMessage(inputFS, outputFS, dfmsg);
+				
+				////
+				ObjectOutputStream objOutput = new ObjectOutputStream(sockFS.getOutputStream());
+				objOutput.writeObject(dfmsg);
+				objOutput.flush();
+				System.out.println("sent out");
+				
+				ObjectInputStream objInput = new ObjectInputStream(sockFS.getInputStream());
+				DownloadFileMsg reply = (DownloadFileMsg) objInput.readObject();
+				
+				
+				System.out.println("downloading msg received");
 				
 				if (reply.isSuccessful()) {
 					System.out.println("sent download request to master");
@@ -199,7 +214,7 @@ public class MapReduceSlaveThread extends Thread {
 
 		// invoke map method for every line of the input file
 		BufferedReader bufferedReader = new BufferedReader(new FileReader(
-				task.getInputFileName()[0]));
+				YZFS.fileSystemWorkingDir + task.getInputFileName()[0]));
 		String line;
 		while ((line = bufferedReader.readLine()) != null) {
 			setInputValue.invoke(inputValue, line);
@@ -257,7 +272,7 @@ public class MapReduceSlaveThread extends Thread {
 		combineMethod.invoke(combiner, combineMethodObjectArgs);
 
 		// write the combine result into object file
-		FileOutputStream fileOut = new FileOutputStream("/tmp/YZFS/"+task.getOutputFileName());
+		FileOutputStream fileOut = new FileOutputStream(YZFS.fileSystemWorkingDir + task.getOutputFileName());
 		ObjectOutputStream objOut = new ObjectOutputStream(fileOut);
 		objOut.writeObject(combineOutput);
 
@@ -374,6 +389,8 @@ public class MapReduceSlaveThread extends Thread {
 			fis.close();
 			sockFS.close();
 			output.close();
+			
+			System.out.println("finish one upload");
 		} catch (FileNotFoundException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

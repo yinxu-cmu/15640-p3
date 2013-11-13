@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 
+import dfs.MasterServer;
 import dfs.SlaveInfo;
 import dfs.YZFS;
 import example.Maximum;
@@ -83,44 +84,32 @@ public class MapReduceMasterThread extends Thread{
 		String jobName = msg.getJobName(); // For future use
 		System.out.println("enterred executeNewJob: "+jobName);
 		
-		int jobId = MapReduceMaster.jobId.incrementAndGet();
+		int jobId = MasterServer.jobId.incrementAndGet();
 		
-		synchronized (MapReduceMaster.jobToTaskCount) {
-			MapReduceMaster.jobToTaskCount.put(jobId, 0);
+		synchronized (MasterServer.jobToTaskCount) {
+			MasterServer.jobToTaskCount.put(jobId, 0);
 		}
 		
 		/* split the job and generate list of tasks */
 		//Get the input file names (socket to YZFS)
-		Socket sockFS;
 		try {
-			sockFS = new Socket(YZFS.MASTER_HOST, YZFS.MASTER_PORT);
-			System.out.println("1");
-			ObjectOutputStream outputFS = new ObjectOutputStream(sockFS.getOutputStream());
-			System.out.println("2");
-			System.out.println("3");
 			
-			System.out.println("request filemap...");
-			RequestFileMapMsg rfm = new RequestFileMapMsg();
-			outputFS.writeObject(rfm);
-			outputFS.flush();
-			
-			ObjectInputStream inputFS = new ObjectInputStream(sockFS.getInputStream());
-			RequestFileMapMsg reply = (RequestFileMapMsg)inputFS.readObject();
-			
-			System.out.println("request filemap done.");
+//			System.out.println("request filemap...");
+//			RequestFileMapMsg rfm = new RequestFileMapMsg();
+//			outputFS.writeObject(rfm);
+//			outputFS.flush();
+//			
+//			ObjectInputStream inputFS = new ObjectInputStream(sockFS.getInputStream());
+//			RequestFileMapMsg reply = (RequestFileMapMsg)inputFS.readObject();
+//			
+//			System.out.println("request filemap done.");
 			// generate task list
-			generateTaskList(reply, jobName, jobId);
+			generateTaskList(jobName, jobId);
 			System.out.println("new job:" + jobName + "has been added");
 			
 			/* send out tasks */
 			sendOutTasks();
 			
-		} catch (UnknownHostException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -129,40 +118,44 @@ public class MapReduceMasterThread extends Thread{
 	}
 	
 	/* generate mapper task list */
-	public void generateTaskList(RequestFileMapMsg msg, String jobName, int jobId)
+	public void generateTaskList(String jobName, int jobId)
 			throws ClassNotFoundException {
-		HashMap<String, ArrayList<String>> fileToPart = msg.getFileToPart();
-		HashMap<String, ArrayList<SlaveInfo>> partToSlave = msg.getPartToSlave();
 		
-		for(ArrayList<String> partList : fileToPart.values()) {
+//		HashMap<String, ArrayList<String>> fileToPart = msg.getFileToPart();
+//		HashMap<String, ArrayList<SlaveInfo>> partToSlave = msg.getPartToSlave();
+		
+		for(ArrayList<String> partList : MasterServer.fileToPart.values()) {
 			for(String part : partList) {
 				MapReduceTask task = new MapReduceTask();
 				task.setInputFileName(new String[] {part});
 				task.setOutputFileName(part + ".output");
 				//always choose the first candidate
-				InetAddress target = partToSlave.get(part).get(0).iaddr;
+				InetAddress target = MasterServer.partToSlave.get(part).get(0).iaddr;
+				/////
+				
 				task.setTarget(target);
 				task.setType(0);
 				task.setJobId(jobId);
 				
-				Class<?> c = Class.forName(jobName);
-				task.setMapClass(c);
+				Class<?> map = Class.forName("example." + jobName + "$Map");
+				task.setMapClass(map);
 				task.setMapInputKeyClass(LongWritable.class); // has to be hardcoding here?
 				task.setMapInputValueClass(Text.class);
 				task.setMapOutputKeyClass(Text.class);
 				task.setMapOutputValueClass(LongWritable.class);
 
-				task.setReduceClass(c);
+				Class<?> reduce = Class.forName("example." + jobName + "$Reduce");
+				task.setReduceClass(reduce);
 				task.setReduceInputKeyClass(Text.class);
 				task.setReduceInputValueClass(LongWritable.class);
 				task.setReduceOutputKeyClass(Text.class);
 				task.setReduceOutputValueClass(LongWritable.class);
 				
-				synchronized(MapReduceMaster.mapQueue) {
-					MapReduceMaster.mapQueue.add(task);
+				synchronized(MasterServer.mapQueue) {
+					MasterServer.mapQueue.add(task);
 				}
-				synchronized(MapReduceMaster.jobToTaskCount) {
-					MapReduceMaster.jobToTaskCount.put(jobId, MapReduceMaster.jobToTaskCount.get(jobId)+1);
+				synchronized(MasterServer.jobToTaskCount) {
+					MasterServer.jobToTaskCount.put(jobId, MasterServer.jobToTaskCount.get(jobId)+1);
 				}
 			}
 		}
@@ -176,13 +169,15 @@ public class MapReduceMasterThread extends Thread{
 		ObjectOutputStream outputTask;
 		int taskCount = 0;
 		
-		while(!MapReduceMaster.mapQueue.isEmpty()) {
+		while(!MasterServer.mapQueue.isEmpty()) {
 			
 			MapReduceTask task;
 			
-			synchronized(MapReduceMaster.mapQueue) {
-				task = MapReduceMaster.mapQueue.remove();
+			synchronized(MasterServer.mapQueue) {
+				task = MasterServer.mapQueue.remove();
 			}
+//			System.out.println(MasterServer.mapQueue.size());
+			System.out.println(task.getTarget());
 			
 			try {
 				sockTask = new Socket(task.getTarget(), YZFS.MP_SLAVE_PORT);
@@ -208,8 +203,8 @@ public class MapReduceMasterThread extends Thread{
 		int jobCount = 0;
 		if (task.getStatus() != MapReduceTask.ERROR) {
 			
-			synchronized(MapReduceMaster.jobToTaskCount) {
-				jobCount = MapReduceMaster.jobToTaskCount.get(task.getJobId());
+			synchronized(MasterServer.jobToTaskCount) {
+				jobCount = MasterServer.jobToTaskCount.get(task.getJobId());
 				if (jobCount == 1) {
 					System.out.println("All mapper tasks finshed.");
 					//indicating all mappers are done
@@ -223,7 +218,7 @@ public class MapReduceMasterThread extends Thread{
 					}
 				} else {
 					//jobCount-1
-					MapReduceMaster.jobToTaskCount.put(task.getJobId(), jobCount-1);
+					MasterServer.jobToTaskCount.put(task.getJobId(), jobCount-1);
 				}
 			}
 			

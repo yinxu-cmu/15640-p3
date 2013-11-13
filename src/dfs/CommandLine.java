@@ -70,21 +70,25 @@ public class CommandLine {
 		System.out.println("copy from local command line parsed");
 
 		/* get the single file or a list of files under the directory into the fileList*/
-		ArrayList<File> fileList = new ArrayList<File>();
+		ArrayList<String> fileList = new ArrayList<String>();
+		ArrayList<Long> fileSize = new ArrayList<Long>();
 		File localFileFullPath = new File(strLocalFileFullPath);
 		if (localFileFullPath.isFile()) {
-			fileList.add(localFileFullPath);
+			fileList.add(localFileFullPath.getAbsolutePath());
+			fileSize.add(localFileFullPath.length());
 		} else if (localFileFullPath.isDirectory()) {
 			File[] fileListArray = localFileFullPath.listFiles();
 			for (File file : fileListArray) {
 				/* ignore directory and hidden files */
-				if (file.isFile() && file.getName().charAt(0) != '.')
-					fileList.add(file);
+				if (file.isFile() && file.getName().charAt(0) != '.') {
+					fileList.add(file.getAbsolutePath());
+					fileSize.add(file.length());
+				}
 			}
 		}
 
 		/* tell the master and slave server the file transfer IP and port */
-		CopyFromLocalMsg request = new CopyFromLocalMsg(fileList, InetAddress.getLocalHost(), YZFS.CLIENT_PORT);
+		CopyFromLocalMsg request = new CopyFromLocalMsg(fileList, fileSize, InetAddress.getLocalHost(), YZFS.CLIENT_PORT);
 		request.setDes(masterIP, masterPort);
 
 		/*

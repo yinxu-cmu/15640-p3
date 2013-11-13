@@ -14,7 +14,11 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.Queue;
+import java.util.concurrent.atomic.AtomicInteger;
 
+import mapreduce.MapReduceTask;
 import message.*;
 
 public class MasterServer extends Thread {
@@ -35,6 +39,10 @@ public class MasterServer extends Thread {
 	public void run() {
 
 		System.out.println("Master server started");
+		
+		System.out.println("Starting MapReduce master");
+		MapReduceThread mpThread = new MapReduceThread();
+		mpThread.start();
 
 		while (true) {
 			try {
@@ -50,6 +58,8 @@ public class MasterServer extends Thread {
 				 * save all the information into the list for future use */
 				if (msg.isFromSlave()) {
 					SlaveInfo slaveInfo = new SlaveInfo();
+					slaveInfo.iaddr = socketServing.getInetAddress();
+					slaveInfo.port = socketServing.getPort();
 					slaveInfo.input = socketServing.getInputStream();
 					slaveInfo.output = socketServing.getOutputStream();
 					slaveList.add(slaveInfo);
@@ -58,7 +68,7 @@ public class MasterServer extends Thread {
 				}
 
 				/* send the reply msg after doing all the executions */
-				Message reply = this.parseMessage(msg);
+				Message reply = parseMessage(msg);
 				ObjectOutputStream output = new ObjectOutputStream(socketServing.getOutputStream());
 				output.writeObject(reply);
 				output.flush();
@@ -99,7 +109,7 @@ public class MasterServer extends Thread {
 			executeCatenate((CatenateMsg) msg);
 			return msg;
 		} else if (msg instanceof RequestFileMapMsg) {
-			System.out.println("master server receive a cat message");
+			System.out.println("master server receive a RequestFileMap message");
 			executeRequestFileMap((RequestFileMapMsg) msg);
 			return msg;
 		} else if (msg instanceof DownloadFileMsg) {
@@ -116,12 +126,12 @@ public class MasterServer extends Thread {
 	 */
 	private void executeCatenate(CatenateMsg msg) throws UnknownHostException, IOException,
 			ClassNotFoundException {
-		ArrayList<String> filePartList = this.fileToPart.get(msg.getFileName());
+		ArrayList<String> filePartList = fileToPart.get(msg.getFileName());
 		StringBuilder strReply = new StringBuilder();
 		
 		/* get cat message from each part of the file and glue them together */
 		for (String filePartName : filePartList) {
-			SlaveInfo slaveInfo = this.partToSlave.get(filePartName).get(0);
+			SlaveInfo slaveInfo = partToSlave.get(filePartName).get(0);
 			msg.setFilePartName(filePartName);
 			Message reply = CommunicationModule.sendMessage(slaveInfo.input, slaveInfo.output, msg);
 			strReply.append(((CatenateMsg) reply).getCatReply());
@@ -136,23 +146,23 @@ public class MasterServer extends Thread {
 	private void executeRemove(RemoveMsg msg) throws UnknownHostException, IOException,
 			ClassNotFoundException {
 		String fileName = msg.getFileName();
-		ArrayList<String> partList = this.fileToPart.get(fileName);
+		ArrayList<String> partList = fileToPart.get(fileName);
 		
 		/* remove each file part on every slave server */
 		for (String filePartName : partList) {
 			msg.setFilePartName(filePartName);
-			ArrayList<SlaveInfo> slaveList = this.partToSlave.get(filePartName);
+			ArrayList<SlaveInfo> slaveList = partToSlave.get(filePartName);
 			for (SlaveInfo slaveInfo : slaveList) {
 				CommunicationModule.sendMessage(slaveInfo.input,
 						slaveInfo.output, msg);
 			}
 			
 			/* update the data structure */
-			this.partToSlave.remove(filePartName);
+			partToSlave.remove(filePartName);
 		}
 		
 		/* update the data structure */
-		this.fileToPart.remove(fileName);
+		fileToPart.remove(fileName);
 	}
 
 	/**
@@ -161,9 +171,9 @@ public class MasterServer extends Thread {
 	 */
 	private void executeList(ListMsg msg) {
 		StringBuilder strReply = new StringBuilder();
-		for (String str : this.fileToPart.keySet())
+		for (String str : fileToPart.keySet())
 			strReply.append(str + ' '); //11.10 changed from \t to space
-		strReply.insert(0, "Found " + this.fileToPart.size() + " items\n");
+		strReply.insert(0, "Found " + fileToPart.size() + " items\n");
 		msg.setListReply(strReply.toString());
 	}
 
@@ -175,15 +185,18 @@ public class MasterServer extends Thread {
 			ClassNotFoundException {
 		
 		/* send copy from local msg for every file in the file list */
-		ArrayList<File> fileList = msg.getLocalFileListFullPath();
-		for (File file : fileList) {
-			FilePartition filePartition = new FilePartition(file.getAbsolutePath(),file.length());
+		ArrayList<String> fileList = msg.getLocalFileListFullPath();
+		ArrayList<Long> fileSize = msg.getLocalFileSize();
+		int length = fileSize.size();
+//		for (File file : fileList) {
+		for (int i = 0; i < length; i++) {
+			FilePartition filePartition = new FilePartition(fileList.get(i), fileSize.get(i));
 			ArrayList<FileChunk> chunkList = filePartition.generateFileChunks();
 			ArrayList<String> partList = new ArrayList<String>();
 			
 			/* send copy from local msg for every part of the file */
 			for (FileChunk chunk : chunkList) {
-				ArrayList<SlaveInfo> randomSlaveList = this.getRandomSlaves();
+				ArrayList<SlaveInfo> randomSlaveList = getRandomSlaves();
 				msg.setFileChunk(chunk);
 				Message ack = new Message();
 				for (SlaveInfo slaveInfo : randomSlaveList) {
@@ -193,14 +206,15 @@ public class MasterServer extends Thread {
 				}
 				/* add to partToSlave list */
 				int partNum = chunk.partNum;
-				String filePartName = file.getName() + ".part" + partNum;
-				this.partToSlave.put(filePartName, randomSlaveList);
+				String filePartName = msg.getFileName(fileList.get(i)) + ".part" + partNum;
+				partToSlave.put(filePartName, randomSlaveList);
 				partList.add(filePartName);
 				
 				System.out.println("send message to " + randomSlaveList.size() + " hosts");
 			}
 			/* add to fileToPart list */
-			this.fileToPart.put(file.getName(), partList);
+			fileToPart.put(msg.getFileName(fileList.get(i)), partList);
+			
 		}
 
 	}
@@ -219,6 +233,8 @@ public class MasterServer extends Thread {
 		InputStream input = socket.getInputStream();
 		
 		/* create the file and write what the server get from socket into the file */
+		System.out.println(msg.getFileFullPath());
+		
 		FileOutputStream fileOutput = new FileOutputStream(msg.getFileFullPath());
 		byte[] buffer = new byte[1024];
 		int length = -1;
@@ -240,8 +256,8 @@ public class MasterServer extends Thread {
 	 * @return
 	 */
 	private ArrayList<SlaveInfo> getRandomSlaves() {
-		ArrayList<SlaveInfo> ret = new ArrayList<SlaveInfo>(this.slaveList);
-		if (YZFS.replicationFactor < this.slaveList.size()) {
+		ArrayList<SlaveInfo> ret = new ArrayList<SlaveInfo>(slaveList);
+		if (YZFS.replicationFactor < slaveList.size()) {
 			Collections.shuffle(ret);
 			return new ArrayList<SlaveInfo>(ret.subList(0, (YZFS.replicationFactor)));
 		} else {
@@ -250,7 +266,14 @@ public class MasterServer extends Thread {
 	}
 
 	private HashSet<SlaveInfo> slaveList = new HashSet<SlaveInfo>();
-	private HashMap<String, ArrayList<String>> fileToPart = new HashMap<String, ArrayList<String>>();
-	private HashMap<String, ArrayList<SlaveInfo>> partToSlave = new HashMap<String, ArrayList<SlaveInfo>>();
+	public static HashMap<String, ArrayList<String>> fileToPart = new HashMap<String, ArrayList<String>>();
+	public static HashMap<String, ArrayList<SlaveInfo>> partToSlave = new HashMap<String, ArrayList<SlaveInfo>>();
 	
+	////
+	private static boolean ongoing = true;
+	public static Queue<MapReduceTask> mapQueue = new LinkedList<MapReduceTask>();
+	public static Queue<MapReduceTask> reduceQueue = new LinkedList<MapReduceTask>();
+	public static AtomicInteger jobId = new AtomicInteger(0);
+	public static HashMap<Integer, Integer> jobToTaskCount = new HashMap<Integer, Integer>();
+	////
 }
