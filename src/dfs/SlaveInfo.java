@@ -15,6 +15,7 @@ public class SlaveInfo implements Serializable {
 	//	public Socket socket;
 	public InetAddress iaddr;
 	public int port;
+	
 	public InputStream input;
 	public OutputStream output;
 	

@@ -15,7 +15,7 @@ public class FilePartition {
 	public FilePartition(String localFileFullPath, long fileLength) {
 		this.localFileFullPath = localFileFullPath;
 		this.fileLength = fileLength;
-		this.chunkSize = YZFS.CHUNK_SIZE; /* # of records per chunk */
+		this.chunkSize = YZFS.NUM_RECORDS; /* # of records per chunk */
 	}
 	
 	public ArrayList<FileChunk> generateFileChunks() {

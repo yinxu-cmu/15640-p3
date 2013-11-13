@@ -1,16 +1,15 @@
 package dfs;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.net.InetAddress;
+import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.Properties;
@@ -25,138 +24,109 @@ import exception.YZFSSlaveServiceException;
  * @author zhengk
  */
 public class SlaveServer {
-	public void startService(String masterHostName) throws YZFSSlaveServiceException,
-			UnknownHostException, IOException, ClassNotFoundException, InterruptedException {
-		System.out.println("Slave Service Started");
+
+	public SlaveServer(String masterHostName) {
+		System.out.println("Slave server started");
 		this.createWorkingDirectory();
+		ConnectMaster connectMaster = new ConnectMaster(masterHostName);
+		connectMaster.start();
+		
+		StartService startService = new StartService();
+		startService.start();
+	}
 
-		/* get connection to master server */
-		System.out.println(masterHostName);
-		Socket socket = new Socket(InetAddress.getByName(masterHostName), YZFS.MASTER_PORT);
+	private class ConnectMaster extends Thread {
 
-		/*
-		 * after successfully connect to master server, right master hostname
-		 * and port number into a file, so that file system command line process
-		 * can utilize it
-		 */
-		this.writeMasterInfo(masterHostName, YZFS.MASTER_PORT);
-		Message msg = new Message();
-		msg.setFromSlave(true);
-		OutputStream output = socket.getOutputStream();
-		ObjectOutputStream objOutput = new ObjectOutputStream(output);
-		objOutput.writeObject(msg);
-		objOutput.flush();
+		public ConnectMaster(String masterHostName) {
+			this.masterHostName = masterHostName;
+		}
 
-		/* get msg from the master server and dispatch the msg to according method */
-		InputStream input = socket.getInputStream();
-		ObjectInputStream objInput = null;
-		while (true) {
-			objInput = new ObjectInputStream(input);
-			msg = (Message) objInput.readObject();
-			if (msg instanceof CopyFromLocalMsg) {
-				System.out.println("slave server receive a copy from local message");
-				executeCopyFromLocal((CopyFromLocalMsg) msg);
-				AckMsg ack = new AckMsg(true);
-				objOutput = new ObjectOutputStream(output);
-				objOutput.writeObject(ack);
-				objOutput.flush();
-			} else if (msg instanceof RemoveMsg) {
-				System.out.println("slave server receive a remove message");
-				executeRemove((RemoveMsg) msg);
-				AckMsg ack = new AckMsg(true);
-				objOutput = new ObjectOutputStream(output);
-				objOutput.writeObject(ack);
-				objOutput.flush();
-			} else if (msg instanceof CatenateMsg) {
-				System.out.println("slave server receive a catenate message");
-				executeCatenate((CatenateMsg) msg);
-				objOutput = new ObjectOutputStream(output);
-				objOutput.writeObject(msg);
-				objOutput.flush();
+		public void run() {
+			/* get connection to master server */
+			System.out.println(masterHostName);
+			// Socket socket = new Socket(InetAddress.getByName(masterHostName),
+			// YZFS.MASTER_PORT);
+
+			/*
+			 * after successfully connect to master server, write master
+			 * hostname and port number into a file, so that file system command
+			 * line process can utilize it
+			 */
+			try {
+				this.writeMasterInfo(masterHostName, YZFS.MASTER_PORT);
+			} catch (FileNotFoundException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			} catch (IOException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			}
+
+			Message msg = new Message();
+			try {
+				msg.setDes(InetAddress.getByName(masterHostName), YZFS.MASTER_PORT);
+			} catch (UnknownHostException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			}
+			msg.setFromSlave(true);
+
+			try {
+				CommunicationModule.sendMessage(msg);
+			} catch (Exception e) {
+				System.exit(0);
 			}
 		}
 
-	}
-	
-	/**
-	 * put the content of the file into the original msg
-	 * @param msg
-	 */
-	private void executeCatenate (CatenateMsg msg) {
-		BufferedReader buffer = null;
-		StringBuilder ret = new StringBuilder();
-		try {
-			buffer = new BufferedReader(new FileReader(YZFS.fileSystemWorkingDir + msg.getFilePartName()));
-		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
-			ret.append("No such file\n");
+		// OutputStream output = socket.getOutputStream();
+		// ObjectOutputStream objOutput = new ObjectOutputStream(output);
+		// objOutput.writeObject(msg);
+		// objOutput.flush();
+		//
+		// InputStream input = socket.getInputStream();
+		// ObjectInputStream objInput = new ObjectInputStream(input);
+		// Message reply = (Message) objInput.readObject();
+		// if (reply instanceof AckMsg) {
+		// System.out.println("get ack from master");
+		// }
+
+		private void writeMasterInfo(String masterHostName, int masterPort)
+				throws FileNotFoundException, IOException {
+			Properties prop = new Properties();
+
+			// set the properties value
+			prop.setProperty("master host name", masterHostName);
+			prop.setProperty("master port number", "" + masterPort);
+
+			// save properties to project root folder
+			prop.store(new FileOutputStream(YZFS.fileSystemWorkingDir + ".masterinfo.config"), null);
+
 		}
 
-		String currentLine = null;
-		try {
-			while ((currentLine = buffer.readLine()) != null) {
-				ret.append(currentLine + '\n');
+		private String masterHostName = null;
+	}
+
+	public class StartService extends Thread {
+
+		public void run() {
+			ServerSocket socketListener = null;
+			try {
+				socketListener = new ServerSocket(YZFS.SLAVE_PORT);
+
+				while (true) {
+					Socket socketServing = null;
+					socketServing = socketListener.accept();
+
+					System.out.println("Socket accepted from " + socketServing.getInetAddress()
+							+ " " + socketServing.getPort());
+					SlaveServerThread slaveThread = new SlaveServerThread(socketServing);
+					slaveThread.start();
+				}
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
 			}
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
 		}
-		msg.setCatReply(ret.toString());
-	}
-	
-	/**
-	 * delete the particular file
-	 * @param msg
-	 */
-	private void executeRemove(RemoveMsg msg) {
-		File file = new File(YZFS.fileSystemWorkingDir + msg.getFilePartName());
-		file.delete();
-	}
-
-	/**
-	 * fetch the file chunk from client
-	 * @param msg
-	 * @return
-	 * @throws IOException
-	 */
-	private boolean executeCopyFromLocal(CopyFromLocalMsg msg) throws IOException {
-		System.out.println("Start File Transfer from " + msg.getFileTransferIP() + " "
-				+ msg.getFileTransferPort());
-		Socket socket = new Socket(msg.getFileTransferIP(), msg.getFileTransferPort());
-
-		// send the file name and range
-		OutputStream output = socket.getOutputStream();
-		ObjectOutputStream objOutput = new ObjectOutputStream(output);
-		objOutput.writeObject(msg.getFileChunk());
-		objOutput.flush();
-		
-		InputStream input = socket.getInputStream();
-		
-		/* create the file and write what the server get from socket into the file */
-		FileOutputStream fileOutput = new FileOutputStream(YZFS.fileSystemWorkingDir
-				+ msg.getFileName(msg.getFileChunk().localFileFullPath) + ".part" + msg.getFileChunk().partNum);
-		byte[] buffer = new byte[YZFS.RECORD_LENGTH];
-		int length = -1;
-		while ((length = input.read(buffer)) > 0) {
-			fileOutput.write(buffer, 0, length);
-			fileOutput.flush();
-		}
-
-		System.out.println("Finish File Transfer");
-		return true;
-	}
-	
-	private void writeMasterInfo(String masterHostName, int masterPort)
-			throws FileNotFoundException, IOException {
-		Properties prop = new Properties();
-
-		// set the properties value
-		prop.setProperty("master host name", masterHostName);
-		prop.setProperty("master port number", "" + masterPort);
-
-		// save properties to project root folder
-		prop.store(new FileOutputStream(YZFS.fileSystemWorkingDir + ".masterinfo.config"), null);
-
 	}
 
 	private void createWorkingDirectory() {

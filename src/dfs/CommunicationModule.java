@@ -5,6 +5,7 @@ import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
+import java.net.InetAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
 
@@ -42,16 +43,33 @@ public class CommunicationModule {
 	 * @param msg
 	 * @return
 	 */
-	public static Message sendMessage(InputStream input, OutputStream output, Message msg)
-			throws UnknownHostException, IOException, ClassNotFoundException {
+//	public static Message sendMessage(InputStream input, OutputStream output, Message msg)
+//			throws UnknownHostException, IOException, ClassNotFoundException {
+//		Message reply = null;
+//		ObjectOutputStream objOutput = new ObjectOutputStream(output);
+//
+//		objOutput.writeObject(msg);
+//		objOutput.flush();
+//
+//		ObjectInputStream objInput = new ObjectInputStream(input);
+//		reply = (Message) objInput.readObject();
+//		return reply;
+//	}
+	
+	public static Message sendMessage(InetAddress ip, int port, Message msg) throws IOException, ClassNotFoundException {
 		Message reply = null;
-		ObjectOutputStream objOutput = new ObjectOutputStream(output);
+		Socket socket = new Socket(ip, port);
+		ObjectOutputStream objOutput = new ObjectOutputStream(socket.getOutputStream());
 
 		objOutput.writeObject(msg);
 		objOutput.flush();
 
-		ObjectInputStream objInput = new ObjectInputStream(input);
+		ObjectInputStream objInput = new ObjectInputStream(socket.getInputStream());
 		reply = (Message) objInput.readObject();
+		
+		socket.close();		
 		return reply;
 	}
+	
+	
 }

@@ -14,19 +14,15 @@ public class YZFS {
 		/* start master server */
 		if (args.length == 0) {
 			MasterServer ms = new MasterServer();
-			ms.run();
+
+//			ms.run();
 			System.out.println("Master Serivce Ended");
 			System.exit(0);
 		}
 
 		/* start background-running slave server */
 		else if (args.length == 2 && args[0].equals("-c")) {
-			SlaveServer ss = new SlaveServer();
-			try {
-				ss.startService(args[1]);
-			} catch (YZFSSlaveServiceException e) {
-				System.err.println("File System Slave Serivce Ended with Exception");
-			}
+			SlaveServer ss = new SlaveServer(args[1]);
 			System.out.println("Slave Serivce Ended");
 		}
 		
@@ -50,11 +46,12 @@ public class YZFS {
 	public static final String localWorkingDir = "/tmp/LOCAL/";
 	
 	public static final int RECORD_LENGTH = 4;
-	public static final int CHUNK_SIZE = 2; /* # of records per chunk */
+	public static final int NUM_RECORDS = 2; /* # of records per chunk */
 	
 	//11.10 added masterhost name as a global var
 //	public static final String MASTER_HOST = "lemonshark.ics.cs.cmu.edu";
-	public static final String MASTER_HOST = "128.2.247.7";
+	public static final String MASTER_HOST = "128.2.251.92";
+	
 	//mapreduce slave port
 	public static final int MP_SLAVE_PORT = 62745;
 	public static final int MP_DOWNLOAD_PORT = 62746;
