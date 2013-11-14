@@ -1,5 +1,6 @@
 package dfs;
 
+import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -11,6 +12,7 @@ import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Collections;
 
+import mapreduce.MapReduceTask;
 import message.AckMsg;
 import message.CatenateMsg;
 import message.CopyFromLocalMsg;
@@ -18,7 +20,6 @@ import message.DownloadFileMsg;
 import message.ListMsg;
 import message.Message;
 import message.RemoveMsg;
-import message.RequestFileMapMsg;
 
 public class MasterServerThread extends Thread {
 
@@ -92,10 +93,6 @@ public class MasterServerThread extends Thread {
 		} else if (msg instanceof CatenateMsg) {
 			System.out.println("master server receive a cat message");
 			executeCatenate((CatenateMsg) msg);
-			return msg;
-		} else if (msg instanceof RequestFileMapMsg) {
-			System.out.println("master server receive a RequestFileMap message");
-			executeRequestFileMap((RequestFileMapMsg) msg);
 			return msg;
 		} else if (msg instanceof DownloadFileMsg) {
 			System.out.println("master server receive a downloadfile message");
@@ -178,7 +175,6 @@ public class MasterServerThread extends Thread {
 		ArrayList<String> fileList = msg.getLocalFileListFullPath();
 		ArrayList<Long> fileSize = msg.getLocalFileSize();
 		int length = fileSize.size();
-		// for (File file : fileList) {
 		for (int i = 0; i < length; i++) {
 			FilePartition filePartition = new FilePartition(fileList.get(i), fileSize.get(i));
 			ArrayList<FileChunk> chunkList = filePartition.generateFileChunks();
@@ -209,10 +205,6 @@ public class MasterServerThread extends Thread {
 
 	}
 
-	public void executeRequestFileMap(RequestFileMapMsg msg) {
-		msg.setFileToPart(MasterServer.fileToPart);
-		msg.setPartToSlave(MasterServer.partToSlave);
-	}
 
 	public void executeDownloadFileMsg(DownloadFileMsg msg) throws IOException {
 		// ??? can use thread here to improve performace
@@ -226,8 +218,10 @@ public class MasterServerThread extends Thread {
 		 * file
 		 */
 		System.out.println(msg.getFileFullPath());
-
+		
+		//??? if YZFS/ doesn't exist, exception throw here
 		FileOutputStream fileOutput = new FileOutputStream(msg.getFileFullPath());
+		
 		byte[] buffer = new byte[1024];
 		int length = -1;
 		while ((length = input.read(buffer)) > 0) {
@@ -240,8 +234,18 @@ public class MasterServerThread extends Thread {
 		socket.close();
 		input.close();
 		fileOutput.close();
+		
+		Socket ackSock = new Socket(YZFS.MASTER_HOST, YZFS.MP_SLAVE_PORT);
+		ObjectOutputStream ackOutput = new ObjectOutputStream(ackSock.getOutputStream());
+		
+		ackOutput.writeObject(msg.getTask());
+		ackOutput.flush();
+		
 	}
 
+	
+
+	
 	/**
 	 * get random slaves from slave list, return all slaves if replication
 	 * factor is greater than the number of slaves

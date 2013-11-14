@@ -29,17 +29,15 @@ public class MapReduceSlave {
 		
 		if (args.length == 1 && args[0].equals("start")) {
 			
-			try {
-				//open local download port. ???HARDCODING PORTNUMBER
-				ServerSocket serverSocket = new ServerSocket(YZFS.MP_DOWNLOAD_PORT);
-				
+			try { 
+				ServerSocket dwldSocket = new ServerSocket(YZFS.MP_DOWNLOAD_PORT);
 				ServerSocket ss = new ServerSocket(YZFS.MP_SLAVE_PORT);
 				ObjectInputStream input;
 				ObjectOutputStream output;
 				while (ongoing) {
 					Socket sock = ss.accept();
 					//start to run the task. ??? Is thread needed here? yes
-					MapReduceSlaveThread slaveThread = new MapReduceSlaveThread(sock, serverSocket);
+					MapReduceSlaveThread slaveThread = new MapReduceSlaveThread(sock, dwldSocket);
 					slaveThread.start();
 					
 				}

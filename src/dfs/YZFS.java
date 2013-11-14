@@ -46,11 +46,11 @@ public class YZFS {
 	public static final String localWorkingDir = "/tmp/LOCAL/";
 	
 	public static final int RECORD_LENGTH = 4;
-	public static final int NUM_RECORDS = 2; /* # of records per chunk */
+	public static final int NUM_RECORDS = 1000000; /* # of records per chunk */
 	
 	//11.10 added masterhost name as a global var
 //	public static final String MASTER_HOST = "lemonshark.ics.cs.cmu.edu";
-	public static final String MASTER_HOST = "128.2.251.92";
+	public static final String MASTER_HOST = "128.2.251.91";
 	
 	//mapreduce slave port
 	public static final int MP_SLAVE_PORT = 62745;

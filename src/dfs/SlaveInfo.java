@@ -16,8 +16,8 @@ public class SlaveInfo implements Serializable {
 	public InetAddress iaddr;
 	public int port;
 	
-	public InputStream input;
-	public OutputStream output;
+//	public InputStream input;
+//	public OutputStream output;
 	
 	public String toString() {
 		return "\tInetAddress: " + iaddr + "\tport number: " + port;

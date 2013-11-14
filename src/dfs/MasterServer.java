@@ -27,6 +27,10 @@ public class MasterServer {
 //	private ServerSocket socketListener = null;
 
 	public MasterServer() {
+		
+		MapReduceThread mpThread= new MapReduceThread();
+		mpThread.start();
+		
 		try {
 			ServerSocket socketListener = new ServerSocket(YZFS.MASTER_PORT);
 			System.out.println("Master server started");
@@ -43,57 +47,6 @@ public class MasterServer {
 			System.err.println("Fail to open socket during master server init.");
 		}
 	}
-
-	// public void run() {
-	//
-	// //
-	// // MapReduceThread mpThread = new MapReduceThread();
-	// // mpThread.start();
-	//
-	// while (true) {
-	// try {
-	// Socket socketServing = socketListener.accept();
-	// System.out.println("Socket accepted from " +
-	// socketServing.getInetAddress() + " "
-	// + socketServing.getPort());
-	//
-	// /* read a message from the other end */
-	// ObjectInputStream input = new
-	// ObjectInputStream(socketServing.getInputStream());
-	// Message msg = (Message) input.readObject();
-	//
-	// /* if the incoming msg is from a slave server,
-	// * save all the information into the list for future use */
-	// if (msg.isFromSlave()) {
-	// SlaveInfo slaveInfo = new SlaveInfo();
-	// slaveInfo.iaddr = socketServing.getInetAddress();
-	// slaveInfo.port = socketServing.getPort();
-	// slaveInfo.input = socketServing.getInputStream();
-	// slaveInfo.output = socketServing.getOutputStream();
-	// slaveList.add(slaveInfo);
-	// System.out.println("One slave added");
-	//
-	// }
-	//
-	// /* send the reply msg after doing all the executions */
-	// Message reply = parseMessage(msg);
-	// ObjectOutputStream output = new
-	// ObjectOutputStream(socketServing.getOutputStream());
-	// output.writeObject(reply);
-	// output.flush();
-	//
-	// System.out.println("reply msg sent from master");
-	//
-	// } catch (IOException e) {
-	// e.printStackTrace();
-	// System.err.println("Fail to accept slave server request.");
-	// } catch (ClassNotFoundException e) {
-	// // TODO Auto-generated catch block
-	// e.printStackTrace();
-	// }
-	// }
-	//
-	// }
 
 	private Socket servingSocket = null;
 	public static Set<SlaveInfo> slaveList = Collections

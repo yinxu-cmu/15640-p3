@@ -44,8 +44,6 @@ public class SlaveServer {
 		public void run() {
 			/* get connection to master server */
 			System.out.println(masterHostName);
-			// Socket socket = new Socket(InetAddress.getByName(masterHostName),
-			// YZFS.MASTER_PORT);
 
 			/*
 			 * after successfully connect to master server, write master
@@ -78,17 +76,6 @@ public class SlaveServer {
 			}
 		}
 
-		// OutputStream output = socket.getOutputStream();
-		// ObjectOutputStream objOutput = new ObjectOutputStream(output);
-		// objOutput.writeObject(msg);
-		// objOutput.flush();
-		//
-		// InputStream input = socket.getInputStream();
-		// ObjectInputStream objInput = new ObjectInputStream(input);
-		// Message reply = (Message) objInput.readObject();
-		// if (reply instanceof AckMsg) {
-		// System.out.println("get ack from master");
-		// }
 
 		private void writeMasterInfo(String masterHostName, int masterPort)
 				throws FileNotFoundException, IOException {

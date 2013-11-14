@@ -43,56 +43,15 @@ import message.Message;
  */
 public class MapReduceSlaveThread extends Thread {
 
-//	public static void main(String[] args) throws InterruptedException {
-//		MapReduceTask task = new MapReduceTask();
-//
-//		task.setMapClass(Maximum.Map.class);
-//		task.setMapInputKeyClass(LongWritable.class);
-//		task.setMapInputValueClass(Text.class);
-//		task.setMapOutputKeyClass(Text.class);
-//		task.setMapOutputValueClass(LongWritable.class);
-//
-//		task.setReduceClass(Maximum.Reduce.class);
-//		task.setReduceInputKeyClass(Text.class);
-//		task.setReduceInputValueClass(LongWritable.class);
-//		task.setReduceOutputKeyClass(Text.class);
-//		task.setReduceOutputValueClass(LongWritable.class);
-//
-//		task.setType(MapReduceTask.MAP);
-//
-//		task.setInputFileName(new String[]{"test4.txt"});
-//		MapReduceSlaveThread t4 = new MapReduceSlaveThread(task);
-//		t4.start();
-//
-//		Thread.sleep(1500);
-//
-//		task.setInputFileName(new String[]{"test5.txt"});
-//		MapReduceSlaveThread t5 = new MapReduceSlaveThread(task);
-//		t5.start();
-//
-//		Thread.sleep(1500);
-//
-//		task.setInputFileName(new String[]{"test6.txt"});
-//		MapReduceSlaveThread t6 = new MapReduceSlaveThread(task);
-//		t6.start();
-//
-//		Thread.sleep(1500);
-//
-//		task.setType(MapReduceTask.REDUCE);
-//		task.setInputFileName(new String[]{"test4.txt.out", "test5.txt.out", "test6.txt.out"});
-//		MapReduceSlaveThread t0 = new MapReduceSlaveThread(task);
-//		t0.start();
-//	}
-
 	private MapReduceTask task;
 	private Socket sock;
 	private ObjectInputStream input;
 	private ObjectOutputStream output;
-	private ServerSocket serverSocket;
+	private ServerSocket dwldSocket;
 
 	public MapReduceSlaveThread(Socket sock, ServerSocket serverSocket) {
 		this.sock = sock;
-		this.serverSocket = serverSocket;
+		this.dwldSocket = serverSocket;
 		
 		try {
 			input = new ObjectInputStream(sock.getInputStream());
@@ -130,23 +89,18 @@ public class MapReduceSlaveThread extends Thread {
 		if (task.getType() == MapReduceTask.MAP) {
 			try {
 				map(task);
-				// send back ack(task object) when map is done
-				output.writeObject(task);
-				output.flush();
-//				input.close();
-//				output.close();
-				
-				
 				
 				System.out.println("one map task finished");
+				//// get prepared to upload the intermediate result
+				MapReduceDownloadThread mpDldThread = new MapReduceDownloadThread(task, dwldSocket);
+				mpDldThread.start();
+				
 				// send download msg to file server
-				DownloadFileMsg dfmsg = new DownloadFileMsg(InetAddress.getLocalHost(), YZFS.MP_DOWNLOAD_PORT);
+				DownloadFileMsg dfmsg = new DownloadFileMsg(InetAddress.getLocalHost(), YZFS.MP_DOWNLOAD_PORT, task.getJobId());
+				dfmsg.setTask(task);
 				dfmsg.setFileFullPath(YZFS.fileSystemWorkingDir + task.getOutputFileName());
 				Socket sockFS = new Socket(InetAddress.getByName(YZFS.MASTER_HOST), YZFS.MASTER_PORT);
-//				OutputStream outputFS = sockFS.getOutputStream();
-//				InputStream inputFS = sockFS.getInputStream();
 				System.out.println("sending downloading request");
-//				DownloadFileMsg reply = (DownloadFileMsg) CommunicationModule.sendMessage(inputFS, outputFS, dfmsg);
 				
 				////
 				ObjectOutputStream objOutput = new ObjectOutputStream(sockFS.getOutputStream());
@@ -163,9 +117,8 @@ public class MapReduceSlaveThread extends Thread {
 				if (reply.isSuccessful()) {
 					System.out.println("sent download request to master");
 				}
-				// upload the intermediate file
-				Socket uploadSocket = serverSocket.accept();
-				uploadResult(task, uploadSocket);
+
+				
 			} catch (Exception e) {
 				// map task failed
 				task.setStatus(MapReduceTask.ERROR);
@@ -369,34 +322,4 @@ public class MapReduceSlaveThread extends Thread {
 //		return ret;
 //	}
 	
-	
-	/* upload the intermediate result of mapper */
-	public void uploadResult(MapReduceTask task, Socket sockFS) {
-		
-		//??? need to be changed, can't read all into memory
-		FileInputStream fis;
-		try {
-			
-			fis = new FileInputStream(task.getOutputFileName());
-			byte[] buffer = new byte[fis.available()];
-//			int length = -1;
-			
-			PrintStream output;
-			output = new PrintStream(sockFS.getOutputStream());
-			output.write(buffer);
-			output.flush();
-			
-			fis.close();
-			sockFS.close();
-			output.close();
-			
-			System.out.println("finish one upload");
-		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-	}
 }

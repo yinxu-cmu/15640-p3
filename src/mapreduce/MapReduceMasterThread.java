@@ -33,8 +33,6 @@ import message.*;
  */
 public class MapReduceMasterThread extends Thread{
 
-//	private Message msg;
-//	private Socket sock;
 	private ObjectInputStream input;
 	private ObjectOutputStream output;
 	
@@ -53,12 +51,9 @@ public class MapReduceMasterThread extends Thread{
 	public void run() {
 		
 		Object msg = null;
-//		NewJobMsg msg = null;
 		try {
 			System.out.println("Reading object from socket");
 			msg = (Object) input.readObject();
-//			msg = (NewJobMsg) input.readObject();
-//			System.out.println(msg.getJobName());
 			AckMsg ack = new AckMsg(true);
 			output.writeObject(ack);
 			output.flush();
@@ -94,15 +89,6 @@ public class MapReduceMasterThread extends Thread{
 		//Get the input file names (socket to YZFS)
 		try {
 			
-//			System.out.println("request filemap...");
-//			RequestFileMapMsg rfm = new RequestFileMapMsg();
-//			outputFS.writeObject(rfm);
-//			outputFS.flush();
-//			
-//			ObjectInputStream inputFS = new ObjectInputStream(sockFS.getInputStream());
-//			RequestFileMapMsg reply = (RequestFileMapMsg)inputFS.readObject();
-//			
-//			System.out.println("request filemap done.");
 			// generate task list
 			generateTaskList(jobName, jobId);
 			System.out.println("new job:" + jobName + "has been added");
@@ -121,8 +107,6 @@ public class MapReduceMasterThread extends Thread{
 	public void generateTaskList(String jobName, int jobId)
 			throws ClassNotFoundException {
 		
-//		HashMap<String, ArrayList<String>> fileToPart = msg.getFileToPart();
-//		HashMap<String, ArrayList<SlaveInfo>> partToSlave = msg.getPartToSlave();
 		
 		for(ArrayList<String> partList : MasterServer.fileToPart.values()) {
 			for(String part : partList) {
@@ -131,7 +115,6 @@ public class MapReduceMasterThread extends Thread{
 				task.setOutputFileName(part + ".output");
 				//always choose the first candidate
 				InetAddress target = MasterServer.partToSlave.get(part).get(0).iaddr;
-				/////
 				
 				task.setTarget(target);
 				task.setType(0);
@@ -176,8 +159,6 @@ public class MapReduceMasterThread extends Thread{
 			synchronized(MasterServer.mapQueue) {
 				task = MasterServer.mapQueue.remove();
 			}
-//			System.out.println(MasterServer.mapQueue.size());
-			System.out.println(task.getTarget());
 			
 			try {
 				sockTask = new Socket(task.getTarget(), YZFS.MP_SLAVE_PORT);
@@ -199,7 +180,7 @@ public class MapReduceMasterThread extends Thread{
 	
 	/* called when receive task finish message */
 	public void ackTaskFinish(MapReduceTask task) {
-		System.out.println("Finished task: " + task.getInputFileName());
+		System.out.println("Finished task: " + task.getInputFileName()[0]);
 		int jobCount = 0;
 		if (task.getStatus() != MapReduceTask.ERROR) {
 			
@@ -212,7 +193,8 @@ public class MapReduceMasterThread extends Thread{
 					try {
 						setReduceInputFile(task);
 						reduce(task);
-					} catch (Throwable e) {
+						System.out.println("DONE!!!!! jobID: "+ task.getJobId());
+					} catch (Throwable e) { 
 						// TODO Auto-generated catch block
 						e.printStackTrace();
 					}
@@ -251,6 +233,8 @@ public class MapReduceMasterThread extends Thread{
 		FileInputStream fileIn = null;
 		ObjectInputStream objIn = null;
 		for (int i = 0; i < size; i++) {
+			System.out.println(task.getInputFileName()[i]);
+			///
 			fileIn = new FileInputStream(task.getInputFileName()[i]);
 			objIn = new ObjectInputStream(fileIn);
 			reduceInputs[i] = ((OutputCollector) objIn.readObject());
@@ -283,12 +267,10 @@ public class MapReduceMasterThread extends Thread{
 		}
 
 		File file = new File("/tmp/YZFS/output.txt");
-//		File file = new File("/YZFS/output.txt");
 		FileWriter fileWriter = new FileWriter(file);
 		BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
 
 		while (reduceOutput.queue.size() != 0) {
-			// System.out.print(reduceOutput.queue.poll() + "  ");
 			bufferedWriter.write(reduceOutput.queue.poll().toString() + "\n");
 		}
 		bufferedWriter.close();
@@ -320,33 +302,11 @@ public class MapReduceMasterThread extends Thread{
 	
 	public void setReduceInputFile(MapReduceTask task) {
 		File[] files = new File("/tmp/YZFS/").listFiles();
-//		File[] files = new File("/YZFS/").listFiles();
 		String[] inputFiles = new String[files.length];
 		for (int i = 0; i < inputFiles.length; i++) {
 			inputFiles[i] = files[i].toString();
 		}
-//		task.setInputFileName(new String[]{"test4.txt.out", "test5.txt.out", "test6.txt.out"});
 		task.setInputFileName(inputFiles);
 	}
-	
-//	public static void main(String[] args) throws Throwable {
-//		MapReduceTask task = new MapReduceTask();
-//		
-//				task.setMapClass(Maximum.Map.class);
-//				task.setMapInputKeyClass(LongWritable.class);
-//				task.setMapInputValueClass(Text.class);
-//				task.setMapOutputKeyClass(Text.class);
-//				task.setMapOutputValueClass(LongWritable.class);
-//		
-//				task.setReduceClass(Maximum.Reduce.class);
-//				task.setReduceInputKeyClass(Text.class);
-//				task.setReduceInputValueClass(LongWritable.class);
-//				task.setReduceOutputKeyClass(Text.class);
-//				task.setReduceOutputValueClass(LongWritable.class);
-//			
-//		setReduceInputFile(task);
-//		reduce(task);
-//	}
-	
 	
 }
