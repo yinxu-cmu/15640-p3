@@ -56,6 +56,8 @@ public class MasterServerThread extends Thread {
 				/* dont send msg back to slave, keeps slave reading from the stream
 				 * so that slave server can quit upon master servers exception */
 				return;
+			} else if (msg.isFromMapReduceSlave()) {
+				return;
 			}
 
 			/* send the reply msg after doing all the executions */

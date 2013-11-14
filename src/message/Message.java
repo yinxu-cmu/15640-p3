@@ -9,6 +9,7 @@ public class Message implements Serializable {
 	protected InetAddress desIP;
 	protected int desPort;
 	private boolean isFromSlave = false;
+	private boolean isFromMapReduceSlave = false;
 	
 	public void setDes(InetAddress desIP, int desPort) {
 		this.desIP = desIP;
@@ -37,6 +38,14 @@ public class Message implements Serializable {
 
 	public void setFromSlave(boolean isFromSlave) {
 		this.isFromSlave = isFromSlave;
+	}
+
+	public boolean isFromMapReduceSlave() {
+		return isFromMapReduceSlave;
+	}
+
+	public void setFromMapReduceSlave(boolean isFromMapReduceSlave) {
+		this.isFromMapReduceSlave = isFromMapReduceSlave;
 	}
 
 }

@@ -35,6 +35,11 @@ public class SlaveServer {
 		startService.start();
 	}
 
+	/**
+	 * The only thing it does is to tell master to add its ip to slavelist
+	 * @author zhengk
+	 *
+	 */
 	private class ConnectMaster extends Thread {
 
 		public ConnectMaster(String masterHostName) {
@@ -50,8 +55,12 @@ public class SlaveServer {
 			 * hostname and port number into a file, so that file system command
 			 * line process can utilize it
 			 */
+			Message msg = null;
 			try {
 				this.writeMasterInfo(masterHostName, YZFS.MASTER_PORT);
+				msg = new Message();
+				msg.setDes(InetAddress.getByName(masterHostName), YZFS.MASTER_PORT);
+				msg.setFromSlave(true);
 			} catch (FileNotFoundException e1) {
 				// TODO Auto-generated catch block
 				e1.printStackTrace();
@@ -60,18 +69,10 @@ public class SlaveServer {
 				e1.printStackTrace();
 			}
 
-			Message msg = new Message();
-			try {
-				msg.setDes(InetAddress.getByName(masterHostName), YZFS.MASTER_PORT);
-			} catch (UnknownHostException e1) {
-				// TODO Auto-generated catch block
-				e1.printStackTrace();
-			}
-			msg.setFromSlave(true);
-
 			try {
 				CommunicationModule.sendMessage(msg);
 			} catch (Exception e) {
+				System.out.println("slave quit with master");
 				System.exit(0);
 			}
 		}
@@ -93,6 +94,12 @@ public class SlaveServer {
 		private String masterHostName = null;
 	}
 
+	
+	/**
+	 * Do the actual communication with master server
+	 * @author zhengk
+	 *
+	 */
 	public class StartService extends Thread {
 
 		public void run() {

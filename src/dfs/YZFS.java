@@ -3,6 +3,8 @@ package dfs;
 import java.io.IOException;
 import java.net.UnknownHostException;
 
+import mapreduce.MapReduceMaster;
+
 import exception.YZFSMasterServiceException;
 import exception.YZFSSlaveServiceException;
 
@@ -13,6 +15,9 @@ public class YZFS {
 			IOException, ClassNotFoundException, InterruptedException {
 		/* start master server */
 		if (args.length == 0) {
+			MapReduceMaster mapReduceMaster = new MapReduceMaster();
+			mapReduceMaster.start();
+			
 			MasterServer ms = new MasterServer();
 			System.out.println("Master Serivce Ended");
 			System.exit(0);

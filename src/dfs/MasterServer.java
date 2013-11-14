@@ -20,18 +20,16 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import mapreduce.MapReduceMaster;
 import mapreduce.MapReduceTask;
 import message.*;
 
 public class MasterServer {
-//	private ServerSocket socketListener = null;
 
 	public MasterServer() {
 		
 		this.createWorkingDirectory();
-		
-		MapReduceThread mpThread= new MapReduceThread();
-		mpThread.start();
+
 		
 		try {
 			ServerSocket socketListener = new ServerSocket(YZFS.MASTER_PORT);
