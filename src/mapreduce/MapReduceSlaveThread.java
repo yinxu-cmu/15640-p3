@@ -26,6 +26,7 @@ import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.Properties;
 
 import dfs.CommunicationModule;
 import dfs.YZFS;
@@ -48,8 +49,18 @@ public class MapReduceSlaveThread extends Thread {
 	private ObjectInputStream input;
 	private ObjectOutputStream output;
 	private ServerSocket dwldSocket;
+	
+	private InetAddress masterIP;
+	private int masterPort;
 
-	public MapReduceSlaveThread(Socket sock, ServerSocket serverSocket) {
+	public MapReduceSlaveThread(Socket sock, ServerSocket serverSocket) throws FileNotFoundException, IOException {
+		
+		// load a properties file to read master ip and port
+		Properties prop = new Properties();
+		prop.load(new FileInputStream(YZFS.fileSystemWorkingDir + ".masterinfo.config"));
+		this.masterIP = InetAddress.getByName(prop.getProperty("master host name"));
+		this.masterPort = Integer.parseInt(prop.getProperty("master port number"));
+		
 		this.sock = sock;
 		this.dwldSocket = serverSocket;
 		
@@ -99,7 +110,7 @@ public class MapReduceSlaveThread extends Thread {
 				DownloadFileMsg dfmsg = new DownloadFileMsg(InetAddress.getLocalHost(), YZFS.MP_DOWNLOAD_PORT, task.getJobId());
 				dfmsg.setTask(task);
 				dfmsg.setFileFullPath(YZFS.fileSystemWorkingDir + task.getOutputFileName());
-				Socket sockFS = new Socket(InetAddress.getByName(YZFS.MASTER_HOST), YZFS.MASTER_PORT);
+				Socket sockFS = new Socket(this.masterIP, this.masterPort);
 				System.out.println("sending downloading request");
 				
 				////

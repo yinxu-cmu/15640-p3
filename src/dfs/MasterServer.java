@@ -28,6 +28,8 @@ public class MasterServer {
 
 	public MasterServer() {
 		
+		this.createWorkingDirectory();
+		
 		MapReduceThread mpThread= new MapReduceThread();
 		mpThread.start();
 		
@@ -45,6 +47,24 @@ public class MasterServer {
 
 		} catch (IOException e) {
 			System.err.println("Fail to open socket during master server init.");
+		}
+	}
+	
+	private void createWorkingDirectory() {
+		File folder = new File(YZFS.fileSystemWorkingDir);
+		/* create working directory */
+		if (!folder.exists()) {
+			if (folder.mkdir()) {
+				System.out.println("Working Directory is created!");
+			} else {
+				System.err.println("Failed to create directory!");
+			}
+		}
+		/* delete all files in the directory */
+		else {
+			File[] listOfFiles = folder.listFiles();
+			for (File file : listOfFiles)
+				file.delete();
 		}
 	}
 

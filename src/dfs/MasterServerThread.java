@@ -1,16 +1,19 @@
 package dfs;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
+import java.net.InetAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Properties;
 
 import mapreduce.MapReduceTask;
 import message.AckMsg;
@@ -23,8 +26,9 @@ import message.RemoveMsg;
 
 public class MasterServerThread extends Thread {
 
-	public MasterServerThread(Socket socket) {
+	public MasterServerThread(Socket socket) throws UnknownHostException {
 		this.socketServing = socket;
+		this.masterIP = InetAddress.getLocalHost();
 	}
 
 	public void run() {
@@ -235,7 +239,7 @@ public class MasterServerThread extends Thread {
 		input.close();
 		fileOutput.close();
 		
-		Socket ackSock = new Socket(YZFS.MASTER_HOST, YZFS.MP_SLAVE_PORT);
+		Socket ackSock = new Socket(masterIP, YZFS.MP_SLAVE_PORT);
 		ObjectOutputStream ackOutput = new ObjectOutputStream(ackSock.getOutputStream());
 		
 		ackOutput.writeObject(msg.getTask());
@@ -263,5 +267,6 @@ public class MasterServerThread extends Thread {
 	}
 
 	private Socket socketServing = null;
+	private InetAddress masterIP;
 
 }
