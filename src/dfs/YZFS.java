@@ -36,9 +36,9 @@ public class YZFS {
 		}
 	}
 
-	public static final int MASTER_PORT = 62742;
-	public static final int SLAVE_PORT = 62743;
-	public static final int CLIENT_PORT = 62744;
+	public static final int MASTER_PORT = 62752;
+	public static final int SLAVE_PORT = 62753;
+	public static final int CLIENT_PORT = 62754;
 	
 	public static final int replicationFactor = 2;
 	
@@ -50,10 +50,10 @@ public class YZFS {
 	
 	//11.10 added masterhost name as a global var
 //	public static final String MASTER_HOST = "lemonshark.ics.cs.cmu.edu";
-	public static final String MASTER_HOST = "128.2.251.91";
+	public static final String MASTER_HOST = "128.2.247.122";
 	
 	//mapreduce slave port
-	public static final int MP_SLAVE_PORT = 62745;
-	public static final int MP_DOWNLOAD_PORT = 62746;
+	public static final int MP_SLAVE_PORT = 62755;
+	public static final int MP_DOWNLOAD_PORT = 62756;
 
 }

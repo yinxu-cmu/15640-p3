@@ -169,10 +169,12 @@ public class MapReduceSlaveThread extends Thread {
 		BufferedReader bufferedReader = new BufferedReader(new FileReader(
 				YZFS.fileSystemWorkingDir + task.getInputFileName()[0]));
 		String line;
+		int i = 0;
 		while ((line = bufferedReader.readLine()) != null) {
 			setInputValue.invoke(inputValue, line);
 			Object[] mapMethodObjectArgs = {null, inputValue, mapOutput, reporter};
 			mapMethod.invoke(mapper, mapMethodObjectArgs);
+			System.out.println("I am still runing...." + i++);
 		}
 
 		// print out the result of map
