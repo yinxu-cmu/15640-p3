@@ -6,6 +6,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.io.RandomAccessFile;
 import java.net.InetAddress;
@@ -38,6 +39,17 @@ public class CommandLine {
 			remove(args[2]);
 		else if (args[1].equals("cat"))
 			catenate(args[2]);
+		else if (args[1].equals("quit"))
+			quit();
+	}
+	
+	private void quit() throws UnknownHostException, IOException, ClassNotFoundException {
+		QuitMsg request = new QuitMsg();
+		request.setDes(masterIP, masterPort);
+		Socket socket = new Socket(masterIP, masterPort);
+		ObjectOutputStream output = new ObjectOutputStream(socket.getOutputStream());
+		output.writeObject(request);
+		output.flush();
 	}
 
 	private void catenate(String localFileFullPath) throws UnknownHostException, IOException,

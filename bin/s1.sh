@@ -1,4 +1,4 @@
-java dfs.YZFS -c 128.2.251.196 & 
+java dfs.YZFS -c 128.2.247.123 & 
 sleep 1
 java mapreduce.MapReduceSlave &
 

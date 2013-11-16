@@ -27,33 +27,24 @@ import dfs.YZFS;
  */
 public class MapReduceSlave {
 
-	/*
-	 * To quit the framework, from any node type in the quit command, each
-	 * participant node will receive a msg containing the quit command.
-	 */
-	private static boolean ongoing = true;
-
 	public static void main(String[] args) throws FileNotFoundException, IOException {
 
-		if (args.length == 1 && args[0].equals("start")) {
+		/* connect to the master to quit upon master server exception */
+		ConnectMaster connectMaster = new ConnectMaster();
+		connectMaster.start();
 
-			ConnectMaster connectMaster = new ConnectMaster();
-			connectMaster.start();
-
-			try {
-				ServerSocket dwldSocket = new ServerSocket(YZFS.MP_DOWNLOAD_PORT);
-				ServerSocket ss = new ServerSocket(YZFS.MP_SLAVE_PORT);
-				while (ongoing) {
-					Socket sock = ss.accept();
-					MapReduceSlaveThread slaveThread = new MapReduceSlaveThread(sock, dwldSocket);
-					slaveThread.start();
-				}
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+		/* communication with master server */
+		try {
+			ServerSocket dwldSocket = new ServerSocket(YZFS.MP_DOWNLOAD_PORT);
+			ServerSocket ss = new ServerSocket(YZFS.MP_PORT);
+			while (true) {
+				Socket sock = ss.accept();
+				MapReduceSlaveThread slaveThread = new MapReduceSlaveThread(sock, dwldSocket);
+				slaveThread.start();
 			}
-		} else {
-			System.out.println("invalid arguments");
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
 	}
 

@@ -16,8 +16,6 @@ import java.util.Properties;
 
 import message.*;
 
-import exception.YZFSSlaveServiceException;
-
 /**
  * This is a background running file system slave service
  * 

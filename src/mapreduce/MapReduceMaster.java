@@ -12,7 +12,7 @@ public class MapReduceMaster extends Thread{
 		ServerSocket serverSocket;
 
 		try {
-			serverSocket = new ServerSocket(YZFS.MP_SLAVE_PORT);
+			serverSocket = new ServerSocket(YZFS.MP_PORT);
 			while (true) {
 				Socket sock = serverSocket.accept();
 				MapReduceMasterThread masterThread = new MapReduceMasterThread(sock);

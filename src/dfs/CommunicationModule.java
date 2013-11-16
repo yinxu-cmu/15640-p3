@@ -15,6 +15,7 @@ public class CommunicationModule {
 
 	/**
 	 * send the Message to the IP and Port specified in msg DesIP and DesPort
+	 * 
 	 * @param msg
 	 * @return
 	 */
@@ -33,30 +34,13 @@ public class CommunicationModule {
 
 		input = new ObjectInputStream(socket.getInputStream());
 		reply = (Message) input.readObject();
+
+		socket.close();
 		return reply;
 	}
-	
-	/**
-	 * send the Message to the InputStream specified at args
-	 * @param input
-	 * @param output
-	 * @param msg
-	 * @return
-	 */
-//	public static Message sendMessage(InputStream input, OutputStream output, Message msg)
-//			throws UnknownHostException, IOException, ClassNotFoundException {
-//		Message reply = null;
-//		ObjectOutputStream objOutput = new ObjectOutputStream(output);
-//
-//		objOutput.writeObject(msg);
-//		objOutput.flush();
-//
-//		ObjectInputStream objInput = new ObjectInputStream(input);
-//		reply = (Message) objInput.readObject();
-//		return reply;
-//	}
-	
-	public static Message sendMessage(InetAddress ip, int port, Message msg) throws IOException, ClassNotFoundException {
+
+	public static Message sendMessage(InetAddress ip, int port, Message msg) throws IOException,
+			ClassNotFoundException {
 		Message reply = null;
 		Socket socket = new Socket(ip, port);
 		ObjectOutputStream objOutput = new ObjectOutputStream(socket.getOutputStream());
@@ -66,10 +50,9 @@ public class CommunicationModule {
 
 		ObjectInputStream objInput = new ObjectInputStream(socket.getInputStream());
 		reply = (Message) objInput.readObject();
-		
-		socket.close();		
+
+		socket.close();
 		return reply;
 	}
-	
-	
+
 }

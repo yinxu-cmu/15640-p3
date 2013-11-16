@@ -3,9 +3,13 @@ package example;
 import java.util.Iterator;
 import java.util.StringTokenizer;
 
+import example.WordCount.Map;
+import example.WordCount.Reduce;
+
 import mapreduce.IntWritable;
 import mapreduce.LongWritable;
 import mapreduce.MapReduceBase;
+import mapreduce.MapReduceConf;
 import mapreduce.Mapper;
 import mapreduce.OutputCollector;
 import mapreduce.Reducer;
@@ -24,7 +28,11 @@ public class Maximum {
 			String line = value.toString();
 			StringTokenizer tokenizer = new StringTokenizer(line);
 			while (tokenizer.hasMoreTokens()) {
-				number.set(tokenizer.nextToken());
+				try {
+					number.set(tokenizer.nextToken());
+				} catch (Exception e) {
+
+				}
 				output.collect(max, number);
 			}
 		}
@@ -37,10 +45,29 @@ public class Maximum {
 				OutputCollector<Text, LongWritable> output, Reporter reporter) throws Exception {
 			long maxValue = Long.MIN_VALUE;
 			while (values.hasNext()) {
-			     maxValue = Math.max(maxValue, values.next().get()); 
+				maxValue = Math.max(maxValue, values.next().get());
 			}
 			output.collect(key, new LongWritable(maxValue));
 		}
+	}
+
+	public static MapReduceConf getMapReduceConf() {
+		MapReduceConf conf = new MapReduceConf();
+
+		conf.setMapClass(Map.class);
+		conf.setReduceClass(Reduce.class);
+
+		conf.setMapInputKeyClass(LongWritable.class);
+		conf.setMapInputValueClass(Text.class);
+		conf.setMapOutputKeyClass(Text.class);
+		conf.setMapOutputValueClass(LongWritable.class);
+
+		conf.setReduceInputKeyClass(Text.class);
+		conf.setReduceInputValueClass(LongWritable.class);
+		conf.setReduceOutputKeyClass(Text.class);
+		conf.setReduceOutputValueClass(LongWritable.class);
+
+		return conf;
 	}
 
 }

@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.InetAddress;
 import java.net.Socket;
@@ -29,15 +30,15 @@ import message.*;
 
 /**
  * @author yinxu
- *
+ * 
  */
-public class MapReduceMasterThread extends Thread{
+public class MapReduceMasterThread extends Thread {
 
 	private ObjectInputStream input;
 	private ObjectOutputStream output;
-	
+
 	public MapReduceMasterThread(Socket sock) {
-		
+
 		try {
 			input = new ObjectInputStream(sock.getInputStream());
 			output = new ObjectOutputStream(sock.getOutputStream());
@@ -46,18 +47,17 @@ public class MapReduceMasterThread extends Thread{
 			e.printStackTrace();
 		}
 	}
-	
+
 	@Override
 	public void run() {
-		
+
 		Object msg = null;
 		try {
-			System.out.println("Reading object from socket");
 			msg = (Object) input.readObject();
 			AckMsg ack = new AckMsg(true);
 			output.writeObject(ack);
 			output.flush();
-			
+
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -65,152 +65,144 @@ public class MapReduceMasterThread extends Thread{
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		
+
 		if (msg instanceof NewJobMsg) {
-			executeNewJob((NewJobMsg)msg);
+			executeNewJob((NewJobMsg) msg);
 		} else if (msg instanceof MapReduceTask) {
-			ackTaskFinish((MapReduceTask)msg);
+			ackTaskFinish((MapReduceTask) msg);
 		}
-		
-		
 	}
-	
+
 	public void executeNewJob(NewJobMsg msg) {
 		String jobName = msg.getJobName(); // For future use
-		System.out.println("enterred executeNewJob: "+jobName);
-		
+		System.out.println("enterred executeNewJob: " + jobName);
+
 		int jobId = MasterServer.jobId.incrementAndGet();
-		
+
 		synchronized (MasterServer.jobToTaskCount) {
 			MasterServer.jobToTaskCount.put(jobId, 0);
 		}
-		
+
 		/* split the job and generate list of tasks */
-		//Get the input file names (socket to YZFS)
+		// Get the input file names (socket to YZFS)
 		try {
-			
+
 			// generate task list
 			generateTaskList(jobName, jobId);
 			System.out.println("new job:" + jobName + "has been added");
-			
+
 			/* send out tasks */
 			sendOutTasks();
-			
+
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		
-	}
-	
-	/* generate mapper task list */
-	public void generateTaskList(String jobName, int jobId)
-			throws ClassNotFoundException {
-		
-		
-		for(ArrayList<String> partList : MasterServer.fileToPart.values()) {
-			for(String part : partList) {
-				MapReduceTask task = new MapReduceTask();
-				task.setInputFileName(new String[] {part});
-				task.setOutputFileName(part + ".output");
-				//always choose the first candidate
-				InetAddress target = MasterServer.partToSlave.get(part).get(0).iaddr;
-				
-				task.setTarget(target);
-				task.setType(0);
-				task.setJobId(jobId);
-				
-				Class<?> map = Class.forName("example." + jobName + "$Map");
-				task.setMapClass(map);
-				task.setMapInputKeyClass(LongWritable.class); // has to be hardcoding here?
-				task.setMapInputValueClass(Text.class);
-				task.setMapOutputKeyClass(Text.class);
-				task.setMapOutputValueClass(LongWritable.class);
 
-				Class<?> reduce = Class.forName("example." + jobName + "$Reduce");
-				task.setReduceClass(reduce);
-				task.setReduceInputKeyClass(Text.class);
-				task.setReduceInputValueClass(LongWritable.class);
-				task.setReduceOutputKeyClass(Text.class);
-				task.setReduceOutputValueClass(LongWritable.class);
+	}
+
+	/* generate mapper task list */
+	public void generateTaskList(String jobName, int jobId) throws ClassNotFoundException,
+			SecurityException, NoSuchMethodException, IllegalArgumentException, IllegalAccessException, InvocationTargetException {
+
+		for (ArrayList<String> partList : MasterServer.fileToPart.values()) {
+			for (String part : partList) {
+				MapReduceTask task = new MapReduceTask();
+				task.setInputFileName(new String[] { part });
+				task.setOutputFileName(part + ".output");
 				
-				synchronized(MasterServer.mapQueue) {
+				// always choose the first candidate
+				InetAddress target = MasterServer.partToSlave.get(part).get(0).iaddr;
+
+				task.setTarget(target);
+				task.setType(MapReduceTask.MAP);
+				task.setJobId(jobId);
+
+				Class<?> jobClass = Class.forName("example." + jobName);
+				Method getConfMethod = jobClass.getMethod("getMapReduceConf", null);
+				MapReduceConf conf = (MapReduceConf) getConfMethod.invoke(null, null);
+				
+				task.setConf(conf);
+
+				synchronized (MasterServer.mapQueue) {
 					MasterServer.mapQueue.add(task);
 				}
-				synchronized(MasterServer.jobToTaskCount) {
-					MasterServer.jobToTaskCount.put(jobId, MasterServer.jobToTaskCount.get(jobId)+1);
+				synchronized (MasterServer.jobToTaskCount) {
+					MasterServer.jobToTaskCount.put(jobId,
+							MasterServer.jobToTaskCount.get(jobId) + 1);
 				}
 			}
 		}
 	}
-	
+
 	/* send out the MapReduceTask in the map queue */
 	public void sendOutTasks() {
-		
+
 		System.out.println("sending out map tasks...");
 		Socket sockTask;
 		ObjectOutputStream outputTask;
 		int taskCount = 0;
-		
-		while(!MasterServer.mapQueue.isEmpty()) {
-			
+
+		while (!MasterServer.mapQueue.isEmpty()) {
+
 			MapReduceTask task;
-			
-			synchronized(MasterServer.mapQueue) {
+
+			synchronized (MasterServer.mapQueue) {
 				task = MasterServer.mapQueue.remove();
 			}
-			
+
 			try {
-				sockTask = new Socket(task.getTarget(), YZFS.MP_SLAVE_PORT);
+				sockTask = new Socket(task.getTarget(), YZFS.MP_PORT);
 				outputTask = new ObjectOutputStream(sockTask.getOutputStream());
 				task.setStatus(MapReduceTask.RUNNING);
 				outputTask.writeObject(task);
 				outputTask.flush();
-				
-				System.out.println("sent task " + taskCount);
-				taskCount++;
-				
+
+				System.out.println("sent task " + taskCount++);
+
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
-			
+
 		}
 	}
-	
+
 	/* called when receive task finish message */
 	public void ackTaskFinish(MapReduceTask task) {
 		System.out.println("Finished task: " + task.getInputFileName()[0]);
 		int jobCount = 0;
 		if (task.getStatus() != MapReduceTask.ERROR) {
-			
-			synchronized(MasterServer.jobToTaskCount) {
+
+			synchronized (MasterServer.jobToTaskCount) {
 				jobCount = MasterServer.jobToTaskCount.get(task.getJobId());
+				System.err.println(jobCount);
 				if (jobCount == 1) {
 					System.out.println("All mapper tasks finshed.");
-					//indicating all mappers are done
+					// indicating all mappers are done
 					System.out.println("starting reducer...");
 					try {
 						setReduceInputFile(task);
 						reduce(task);
-						System.out.println("DONE!!!!! jobID: "+ task.getJobId());
-					} catch (Throwable e) { 
+						System.out.println("DONE!!!!! jobID: " + task.getJobId());
+						
+					} catch (Throwable e) {
 						// TODO Auto-generated catch block
 						e.printStackTrace();
 					}
 				} else {
-					//jobCount-1
-					MasterServer.jobToTaskCount.put(task.getJobId(), jobCount-1);
+					// jobCount-1
+					MasterServer.jobToTaskCount.put(task.getJobId(), jobCount - 1);
 				}
 			}
-			
+
 		} else {
 			System.out.println("Error happened");
 		}
-		
+
 	}
-	
-	@SuppressWarnings({"unused", "rawtypes", "unchecked"})
+
+	@SuppressWarnings({ "unused", "rawtypes", "unchecked" })
 	private void reduce(MapReduceTask task) throws Throwable {
 
 		OutputCollector reduceOutput = new OutputCollector();
@@ -221,8 +213,8 @@ public class MapReduceMasterThread extends Thread{
 		Object reducer = reduceConstr.newInstance(null);
 
 		// get a reduce method from the reducer
-		Class<?>[] reduceMethodClassArgs = {task.getReduceInputKeyClass(), Iterator.class,
-				OutputCollector.class, Reporter.class};
+		Class<?>[] reduceMethodClassArgs = { task.getReduceInputKeyClass(), Iterator.class,
+				OutputCollector.class, Reporter.class };
 		Method reduceMethod = task.getReduceClass().getMethod("reduce", reduceMethodClassArgs);
 
 		// read reduce inputs obj from map result obj
@@ -234,7 +226,7 @@ public class MapReduceMasterThread extends Thread{
 		ObjectInputStream objIn = null;
 		for (int i = 0; i < size; i++) {
 			System.out.println(task.getInputFileName()[i]);
-			///
+			// /
 			fileIn = new FileInputStream(task.getInputFileName()[i]);
 			objIn = new ObjectInputStream(fileIn);
 			reduceInputs[i] = ((OutputCollector) objIn.readObject());
@@ -261,7 +253,7 @@ public class MapReduceMasterThread extends Thread{
 
 			// invoke reduce method
 			itrValues = values.iterator();
-			Object[] reduceMethodObjectArgs = {key, itrValues, reduceOutput, reporter};
+			Object[] reduceMethodObjectArgs = { key, itrValues, reduceOutput, reporter };
 			reduceMethod.invoke(reducer, reduceMethodObjectArgs);
 
 		}
@@ -276,9 +268,9 @@ public class MapReduceMasterThread extends Thread{
 		bufferedWriter.close();
 
 	}
-	
-	public ArrayList<Integer> getMinIndices(Entry[] entries, Method getHashcode)
-			throws Throwable, NoSuchMethodException {
+
+	private ArrayList<Integer> getMinIndices(Entry[] entries, Method getHashcode) throws Throwable,
+			NoSuchMethodException {
 		ArrayList<Integer> ret = null;
 		int length = entries.length;
 		int minHash = Integer.MAX_VALUE;
@@ -299,9 +291,9 @@ public class MapReduceMasterThread extends Thread{
 
 		return ret;
 	}
-	
+
 	public void setReduceInputFile(MapReduceTask task) {
-		File[] files = new File("/tmp/YZFS/").listFiles();
+		File[] files = new File(YZFS.fileSystemWorkingDir).listFiles();
 		String[] inputFiles = new String[files.length];
 		for (int i = 0; i < inputFiles.length; i++) {
 			inputFiles[i] = files[i].toString();
@@ -309,4 +301,7 @@ public class MapReduceMasterThread extends Thread{
 		task.setInputFileName(inputFiles);
 	}
 	
+	
+	
+
 }

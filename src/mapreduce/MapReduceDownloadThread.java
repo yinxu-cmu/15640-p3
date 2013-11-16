@@ -63,7 +63,6 @@ public class MapReduceDownloadThread extends Thread{
 				out.write(buffer, 0, length);
 				out.flush();
 			}
-			System.out.println("buffer read is :" + buffer.length);
 			sockFS.close();
 			
 			System.out.println("finish one upload");

@@ -49,6 +49,25 @@ public class WordCount {
 		}
 	}
 
+	public static MapReduceConf getMapReduceConf() {
+		MapReduceConf conf = new MapReduceConf();
+
+		conf.setMapClass(Map.class);
+		conf.setReduceClass(Reduce.class);
+		
+		conf.setMapInputKeyClass(LongWritable.class);
+		conf.setMapInputValueClass(Text.class);
+		conf.setMapOutputKeyClass(Text.class);
+		conf.setMapOutputValueClass(IntWritable.class);
+		
+		conf.setReduceInputKeyClass(Text.class);
+		conf.setReduceInputValueClass(IntWritable.class);
+		conf.setReduceOutputKeyClass(Text.class);
+		conf.setReduceOutputValueClass(IntWritable.class);
+
+		return conf;
+	}
+
 	public static void mapper(String input) throws Throwable {
 
 		// should know the type of output key and output value from user
@@ -152,8 +171,8 @@ public class WordCount {
 			reducer.reduce((Text) key, itrValues, reduceOutput, reporter);
 		}
 
-//		while (reduceOutput.queue.size() != 0)
-//			System.out.print(reduceOutput.queue.poll() + "  ");
+		// while (reduceOutput.queue.size() != 0)
+		// System.out.print(reduceOutput.queue.poll() + "  ");
 
 	}
 
@@ -186,7 +205,8 @@ public class WordCount {
 		// mapper("test1.txt");
 		// mapper("test2.txt");
 		// mapper("test3.txt");
-		reducer(new String[] { "test1.txt.out", "test2.txt.out", "test3.txt.out" });
+		// reducer(new String[] { "test1.txt.out", "test2.txt.out",
+		// "test3.txt.out" });
 
 		// JobConf conf = new JobConf(WordCount.class);
 		// conf.setJobName("wordcount");

@@ -19,6 +19,7 @@ import java.util.Queue;
 
 import message.*;
 
+import dfs.CommunicationModule;
 import dfs.SlaveInfo;
 import dfs.YZFS;
 
@@ -33,22 +34,17 @@ public class YZHadoop {
 	public static void main(String[] args) {
 		// TODO Auto-generated method stub
 
-		/* ??? haven't handle invalid args */
 		if (args.length == 1) {
 			/*
-			 * args[0]: hadoop job name By defautl, take all files in YZFS as
+			 * args[0]: hadoop job name By default, take all files in YZFS as
 			 * input files, and output to the root directory of YZFS as well.
 			 * The default name is output
 			 */
 			NewJobMsg msg = new NewJobMsg(args[0]);
 			try {
-				Socket sock = new Socket(getMasterIP(), YZFS.MP_SLAVE_PORT);
-				ObjectOutputStream output = new ObjectOutputStream(sock.getOutputStream());
-				ObjectInputStream input = new ObjectInputStream(sock.getInputStream());
-				output.writeObject(msg);
-				output.flush();
 
-				AckMsg ack = (AckMsg) input.readObject();
+				AckMsg ack = null;
+				ack = (AckMsg) CommunicationModule.sendMessage(getMasterIP(), YZFS.MP_PORT, msg);
 
 				if (ack.isSuccessful()) {
 					System.out.println("Sent out job: " + args[0]);

@@ -5,13 +5,10 @@ import java.net.UnknownHostException;
 
 import mapreduce.MapReduceMaster;
 
-import exception.YZFSMasterServiceException;
-import exception.YZFSSlaveServiceException;
-
 public class YZFS {
 
 	/* to run, go to bin/ directory, type java dfs.YZFS */
-	public static void main(String[] args) throws YZFSMasterServiceException, UnknownHostException,
+	public static void main(String[] args) throws UnknownHostException,
 			IOException, ClassNotFoundException, InterruptedException {
 		/* start master server */
 		if (args.length == 0) {
@@ -19,14 +16,12 @@ public class YZFS {
 			mapReduceMaster.start();
 			
 			MasterServer ms = new MasterServer();
-			System.out.println("Master Serivce Ended");
 			System.exit(0);
 		}
 
 		/* start background-running slave server */
 		else if (args.length == 2 && args[0].equals("-c")) {
 			SlaveServer ss = new SlaveServer(args[1]);
-			System.out.println("Slave Serivce Ended");
 		}
 		
 		else if (args.length > 0 && args[0].equals("-yzfs")) {
@@ -47,11 +42,10 @@ public class YZFS {
 	
 	public static final String fileSystemWorkingDir= "/tmp/YZFS/";
 	
-	public static final int RECORD_LENGTH = 4;
-	public static final int NUM_RECORDS = 100000; /* # of records per chunk */
+	public static final int RECORD_LENGTH = 12;
+	public static final int NUM_RECORDS = 1000; /* # of records per chunk */
 	
-	//mapreduce slave port
-	public static final int MP_SLAVE_PORT = 62765;
+	public static final int MP_PORT = 62765;
 	public static final int MP_DOWNLOAD_PORT = 62766;
 
 }

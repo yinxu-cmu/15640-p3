@@ -22,6 +22,7 @@ import message.CopyFromLocalMsg;
 import message.DownloadFileMsg;
 import message.ListMsg;
 import message.Message;
+import message.QuitMsg;
 import message.RemoveMsg;
 
 public class MasterServerThread extends Thread {
@@ -53,8 +54,11 @@ public class MasterServerThread extends Thread {
 				MasterServer.slaveList.add(slaveInfo);
 				System.out.println("One slave added");
 
-				/* dont send msg back to slave, keeps slave reading from the stream
-				 * so that slave server can quit upon master servers exception */
+				/*
+				 * dont send msg back to slave, keeps slave reading from the
+				 * stream so that slave server can quit upon master servers
+				 * exception
+				 */
 				return;
 			} else if (msg.isFromMapReduceSlave()) {
 				return;
@@ -104,6 +108,8 @@ public class MasterServerThread extends Thread {
 			System.out.println("master server receive a downloadfile message");
 			executeDownloadFileMsg((DownloadFileMsg) msg);
 			return msg;
+		} else if (msg instanceof QuitMsg) {
+			System.exit(0);
 		}
 		return null;
 	}
@@ -137,7 +143,13 @@ public class MasterServerThread extends Thread {
 	private void executeRemove(RemoveMsg msg) throws UnknownHostException, IOException,
 			ClassNotFoundException {
 		String fileName = msg.getFileName();
-		ArrayList<String> partList = MasterServer.fileToPart.get(fileName);
+		ArrayList<String> partList = new ArrayList<String>();
+		if (fileName.equals("all")) {
+			for (String tmpFileName : MasterServer.fileToPart.keySet())
+				partList.addAll(MasterServer.fileToPart.get(tmpFileName));
+		} else {
+			partList = MasterServer.fileToPart.get(fileName);
+		}
 
 		/* remove each file part on every slave server */
 		for (String filePartName : partList) {
@@ -211,7 +223,6 @@ public class MasterServerThread extends Thread {
 
 	}
 
-
 	public void executeDownloadFileMsg(DownloadFileMsg msg) throws IOException {
 		// ??? can use thread here to improve performace
 		System.out.println("Start File Download from " + msg.getDesIP() + " " + msg.getDesPort());
@@ -224,10 +235,10 @@ public class MasterServerThread extends Thread {
 		 * file
 		 */
 		System.out.println(msg.getFileFullPath());
-		
-		//??? if YZFS/ doesn't exist, exception throw here
+
+		// ??? if YZFS/ doesn't exist, exception throw here
 		FileOutputStream fileOutput = new FileOutputStream(msg.getFileFullPath());
-		
+
 		byte[] buffer = new byte[1024];
 		int length = -1;
 		while ((length = input.read(buffer)) > 0) {
@@ -240,18 +251,15 @@ public class MasterServerThread extends Thread {
 		socket.close();
 		input.close();
 		fileOutput.close();
-		
-		Socket ackSock = new Socket(masterIP, YZFS.MP_SLAVE_PORT);
+
+		Socket ackSock = new Socket(masterIP, YZFS.MP_PORT);
 		ObjectOutputStream ackOutput = new ObjectOutputStream(ackSock.getOutputStream());
-		
+
 		ackOutput.writeObject(msg.getTask());
 		ackOutput.flush();
-		
+
 	}
 
-	
-
-	
 	/**
 	 * get random slaves from slave list, return all slaves if replication
 	 * factor is greater than the number of slaves
